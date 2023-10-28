@@ -1,9 +1,17 @@
 ﻿cmake_minimum_required (VERSION 3.12)
 
-project ("sgp4")
-add_executable (
-	${PROJECT_NAME}
-	"src/main.cpp"
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
+
+project (sgp4)
+add_library(sgp4
+    src/time_utils.cpp
 )
 
-set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 20)
+target_include_directories(sgp4
+    PUBLIC
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+add_subdirectory(examples)
