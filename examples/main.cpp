@@ -3,13 +3,22 @@
 
 #include "sgp4/sgp4.hpp"
 
+const char* tle_test = R""""(
+NOAA 1 [-]              
+ATLAS CENTAUR 2         
+1 00694U 63047A   23303.69695459  .00002227  00000+0  27508-3 0  9990
+2 00694  30.3548 306.4872 0571517  85.2415 281.3177 14.06127117 10072
+THOR AGENA D R/B        
+1 00733U 64002A   23303.85853536  .00000536  00000+0  21239-3 0  9992
+2 00733  99.0413 257.8209 0032468 244.3071 115.4758 14.32938990114968
+)"""";
+
 int main() {
-	std::cout << "Hello there!" << std::endl;
-	auto utc_now = std::chrono::utc_clock::now();
-	std::cout << std::setprecision(10) << sgp4::time_utils::to_julian(utc_now) << std::endl;
-	double sidereal = sgp4::time_utils::to_sidereal_secs(utc_now);
-	std::cout << ((int)sidereal / 3600) << std::endl;
-	std::cout << ((int)sidereal % 3600 / 60) << std::endl;
-	std::cout << ((int)sidereal % 3600 % 60) << std::endl;
-	std::cout << sidereal;
+	std::cout << tle_test << std::endl;
+
+	std::vector<sgp4::tle_entry> entries = sgp4::parse_tle_entries(tle_test);
+	for (auto& entry : entries) {
+		std::cout << "<" << entry.name << ">" << std::endl;
+		std::cout << entry.rad_press_coef << std::endl;
+	}
 }

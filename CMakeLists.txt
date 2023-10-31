@@ -7,7 +7,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
 project (sgp4)
 add_library(sgp4
     src/time_utils.cpp
-)
+ "src/tle.cpp")
 
 target_include_directories(sgp4
     PUBLIC
