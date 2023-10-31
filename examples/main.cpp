@@ -18,7 +18,6 @@ int main() {
 
 	std::vector<sgp4::tle_entry> entries = sgp4::parse_tle_entries(tle_test);
 	for (auto& entry : entries) {
-		std::cout << "<" << entry.name << ">" << std::endl;
-		std::cout << entry.rad_press_coef << std::endl;
+		
 	}
 }

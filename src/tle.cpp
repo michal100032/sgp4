@@ -12,7 +12,10 @@ static inline T parse_num(std::string_view line, size_t start, size_t end) {
 	while (line[start] == ' ')
 		start++;
 	T data;
-	std::from_chars(line.data() + start, line.data() + end, data);
+	std::from_chars_result res = 
+		std::from_chars(line.data() + start, line.data() + end, data);
+	if (res.ec != std::errc())
+		return T();
 	return data;
 }
 
