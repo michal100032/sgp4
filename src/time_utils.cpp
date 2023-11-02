@@ -13,6 +13,16 @@ std::tm sgp4::time_utils::to_tm(std::chrono::utc_clock::time_point time) {
 	return utc_tm;
 }
 
+std::chrono::utc_clock::time_point sgp4::time_utils::from_tm(std::chrono::utc_clock::time_point time) {
+	using namespace std::chrono;
+	
+	time_t local_time = mktime(time);
+	system_clock::time_point sys_time = system_clock::from_time_t(local_time);
+	utc_clock::time_point utc = utc_clock::from_sys(sys_time);
+
+	return utc;
+}
+
 double sgp4::time_utils::to_julian(std::chrono::utc_clock::time_point time) {
 	tm utc_tm = to_tm(time);
 	return to_julian_from_tm(utc_tm);

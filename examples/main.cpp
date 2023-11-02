@@ -16,8 +16,11 @@ THOR AGENA D R/B
 int main() {
 	std::cout << tle_test << std::endl;
 
-	std::vector<sgp4::tle_entry> entries = sgp4::parse_tle_entries(tle_test);
-	for (auto& entry : entries) {
-		
-	}
+	auto now = std::chrono::utc_clock::now();
+	tm now_tm = sgp4::time_utils::to_tm(now);
+	auto now2 = sgp4::time_utils::from_tm(now_tm);
+
+	std::cout << now << std::endl;
+	std::cout << now2 << std::endl;
+
 }
