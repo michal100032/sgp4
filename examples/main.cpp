@@ -14,13 +14,10 @@ THOR AGENA D R/B
 )"""";
 
 int main() {
-	std::cout << tle_test << std::endl;
-
+	
 	auto now = std::chrono::utc_clock::now();
-	tm now_tm = sgp4::time_utils::to_tm(now);
-	auto now2 = sgp4::time_utils::from_tm(now_tm);
-
-	std::cout << now << std::endl;
-	std::cout << now2 << std::endl;
+	double sidereal_secs = sgp4::time_utils::to_sidereal_secs(now);
+	int seconds = (int)sidereal_secs;
+	std::cout << seconds / 3600;
 
 }
