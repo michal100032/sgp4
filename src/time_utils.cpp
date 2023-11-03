@@ -64,8 +64,10 @@ inline double sgp4::time_utils::to_julian_from_tm(const tm& utc_tm) {
 
 	return julian;
 }
-// sidereal time from 0 to 84600!
+// sidereal time from 0 to 84600 in sidereal seconds!
 // 1 sidereal second = 86400 / 86164.0905 seconds = 1.00273790971 seconds
+// Use of UT1 instead of UTC for calculations would be more appropriate
+// but since UTC is never more than 0.9s off this is close enough
 double sgp4::time_utils::to_sidereal_secs(std::chrono::utc_clock::time_point time) {
 	double julian = to_julian(time);
 	
@@ -85,7 +87,7 @@ double sgp4::time_utils::to_sidereal_secs(std::chrono::utc_clock::time_point tim
 		+ 0.093104       * julian_centuries_since_2000 * julian_centuries_since_2000
 		- 6.2e-6         * julian_centuries_since_2000 * julian_centuries_since_2000 * julian_centuries_since_2000;
 	
-	double sidereal_secs_since_midnight = 84600 * 1.00273790971 * julian_since_midnight;
+	double sidereal_secs_since_midnight = 86400 * 1.00273790971 * julian_since_midnight;
 
 	double sidereal_secs =
 		fmod(midnight_sidereal_secs + sidereal_secs_since_midnight, 86400);

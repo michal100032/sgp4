@@ -1,5 +1,6 @@
 #include <iostream>
 #include <chrono>
+#include <thread>
 
 #include "sgp4/sgp4.hpp"
 
@@ -19,7 +20,19 @@ THOR AGENA D R/B
 */
 
 int main() {
-	auto entry = sgp4::parse_tle_entry(TLE);
+	using namespace std::chrono_literals;
 
-	std::cout << entry.epoch << std::endl;
+	while (true) {
+		system("cls");
+		auto now = std::chrono::utc_clock::now();
+		std::cout << "UTC" << std::endl;
+		std::cout << now << std::endl;;
+		int sidereal_secs = sgp4::time_utils::to_sidereal_secs(now);
+		std::cout << "Sidereal" << std::endl;
+		std::cout << (sidereal_secs / 3600) << ":"
+			<< (sidereal_secs % 3600 / 60) << ":"
+			<< (sidereal_secs % 3600 % 60);
+
+		std::this_thread::sleep_for(1s);
+	}
 }
