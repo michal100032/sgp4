@@ -3,16 +3,18 @@
 #include <vector>
 #include <string>
 #include <string_view>
+#include <chrono>
 
 namespace sgp4 {
 
-	struct tle_entry {
+	struct tle_set {
 		// Line 0
 		std::string name;
 
 		// Line 1
 		int catalog_number;
 
+		// <should i keep it?>
 		enum class classification_type {
 			unclassified, classified, secret
 		};
@@ -24,9 +26,10 @@ namespace sgp4 {
 			char piece[4];
 		};
 		cospar_id int_designator;
+		// </should i keep it?>
 
-		int epoch_year;
-		double epoch_day_frac;
+
+		std::chrono::utc_clock::time_point epoch;
 
 		double d_mean_motion;
 		double dd_mean_motion;
@@ -49,5 +52,6 @@ namespace sgp4 {
 		int rev_num;
 	};
 
-	std::vector<tle_entry> parse_tle_entries(std::string_view str);
+	tle_set parse_tle_entry(std::string_view str);
+	std::vector<tle_set> parse_tle_entries(std::string_view str);
 }
