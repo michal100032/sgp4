@@ -31,7 +31,10 @@ namespace sgp4 {
 
 		std::chrono::utc_clock::time_point epoch;
 
+		// first derivative of mean motion [rad/min^2]
 		double d_mean_motion;
+
+		// second derivative of mean motion [rad/min^3]
 		double dd_mean_motion;
 
 		double rad_press_coef;
@@ -41,12 +44,15 @@ namespace sgp4 {
 		int set_num;
 		// Line 2
 
+		// all angles in radians
 		double inclination;
 		double right_ascension; // of the ascending node
 		double eccentricity;
 
 		double arg_of_perigee;
 		double mean_anomaly;
+
+		// mean motion [rad/min]
 		double mean_motion;
 
 		int rev_num;

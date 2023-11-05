@@ -74,8 +74,8 @@ static void parse_line1(std::string_view line, sgp4::tle_set& out_entry) {
 	double epoch_day_frac = parse_num<double>(line, 20, 32);
 	out_entry.epoch = tle_epoch_to_utc(epoch_year, epoch_day_frac);
 
-	out_entry.d_mean_motion = parse_num<double>(line, 33, 43);
-	out_entry.dd_mean_motion = parse_double_pow(line, 44, 52);
+	out_entry.d_mean_motion = parse_num<double>(line, 33, 43) * 2 * PI / 1440.0 / 1444.0;
+	out_entry.dd_mean_motion = parse_double_pow(line, 44, 52) * 2 * PI / 1440.0 / 1440.0 / 1440.0;
 	out_entry.rad_press_coef = parse_double_pow(line, 53, 61);
 
 	out_entry.ephemeris_type = line[62] - '0';
@@ -88,7 +88,7 @@ static void parse_line2(std::string_view line, sgp4::tle_set& out_entry) {
 	out_entry.eccentricity = parse_num<double>(line, 26, 33) / 10000000;
 	out_entry.arg_of_perigee = parse_num<double>(line, 34, 42) * DEG_TO_RAD;
 	out_entry.mean_anomaly = parse_num<double>(line, 43, 51) * DEG_TO_RAD;
-	out_entry.mean_motion = parse_num<double>(line, 52, 63);
+	out_entry.mean_motion = parse_num<double>(line, 52, 63) * 2 * PI / 1440.0;
 
 	out_entry.rev_num = parse_num<int>(line, 63, 68);
 }
