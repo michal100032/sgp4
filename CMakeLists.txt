@@ -10,6 +10,7 @@ add_library(
     src/time_utils.cpp
     src/tle.cpp
     src/vec3.cpp
+    src/coords.cpp
 )
 
 target_include_directories(sgp4
