@@ -18,4 +18,4 @@ target_include_directories(sgp4
     ${CMAKE_SOURCE_DIR}/include
 )
 
-add_subdirectory(examples)
+add_subdirectory(tests)
