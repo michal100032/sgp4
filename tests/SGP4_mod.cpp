@@ -1,5 +1,4 @@
-
-#include "SGP4.h"
+#include "SGP4_mod.h"
 
 #include <iostream>
 #include <iomanip>
@@ -10,8 +9,8 @@ static const double DEG_TO_RAD = PI / 180.0;
 
 // define global variables here, not in .h
 // use extern in main
-char help = 'n';
-FILE* dbgfile;
+static char help = 'n';
+static FILE* dbgfile;
 
 /* ----------- local functions - only ever used internally by sgp4 ---------- */
 static void dpper
@@ -101,7 +100,7 @@ static void initl
 	double& rp, double& rteosq, double& sinio, double& gsto, char opsmode
 );
 
-namespace SGP4Funcs
+namespace SGP4Funcs_mod
 {
 
 	/* -----------------------------------------------------------------------------
