@@ -7,14 +7,11 @@
 
 #include "sgp4/sgp4.hpp"
 
-namespace SGP4Funcs_mod
-{
-	typedef struct elsetrec
-	{
+namespace SGP4Funcs_mod {
+	struct elsetrec {
 	  char      satnum[6];
 	  int       epochyr = 0, epochtynumrev = 0;
 	  int       error = 0;
-	  char      operationmode = 0;
 	  char      init = 0, method = 0;
 
 	  /* Near Earth */
@@ -58,7 +55,7 @@ namespace SGP4Funcs_mod
 		  bstar = 0.0, rcse = 0.0, inclo = 0.0, nodeo = 0.0, ecco = 0.0,
 		  argpo = 0.0, mo = 0.0, no_kozai = 0.0;
 	  // sgp4fix add new variables from tle
-	  char  classification = 0, intldesg[11];
+	  char  classification = 0, intldesg[11] = { 0 };
 	  int   ephtype = 0;
 	  long  elnum = 0, revnum = 0;
 	  // sgp4fix add unkozai'd variable
@@ -73,13 +70,11 @@ namespace SGP4Funcs_mod
 	  unsigned char active = 0; // "Active S/C" flag (0=n, 1=y) 
 	  unsigned char not_orbital = 0; // "Orbiting S/C" flag (0=n, 1=y)  
 	  double rcs_m2 = 0; // "RCS (m^2)" storage  
-	} elsetrec;
-	//	public class SGP4Class
-	//	{
-
+	};
+	
 	bool sgp4init
 		(
-		char opsmode, const char satn[9], const double epoch,
+		const char satn[9], const double epoch,
 		const double xbstar, const double xndot, const double xnddot, const double xecco, const double xargpo,
 		const double xinclo, const double xmo, const double xno,
 		const double xnodeo, elsetrec& satrec
@@ -87,32 +82,7 @@ namespace SGP4Funcs_mod
 
 	bool sgp4(elsetrec& satrec, double tsince, double r[3], double v[3]);
 
-	elsetrec twoline2rv(const sgp4::tle_set& set, char opsmode);
+	elsetrec twoline2rv(const sgp4::tle_set& set);
 
-	// older sgp4ext methods
-	double  gstime_SGP4
-		(
-		double jdut1
-		);
-
-	void    jday_SGP4
-		(
-		int year, int mon, int day, int hr, int minute, double sec,
-		double& jd, double& jdFrac
-		);
-
-	void    days2mdhms_SGP4
-		(
-		int year, double days,
-		int& mon, int& day, int& hr, int& minute, double& sec
-		);
-
-	void    invjday_SGP4
-		(
-		double jd, double jdFrac,
-		int& year, int& mon, int& day,
-		int& hr, int& minute, double& sec
-		);
-
-
-}  // namespace
+	double  gstime_SGP4(double jdut1);
+} 

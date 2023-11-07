@@ -41,8 +41,7 @@ static void dpper
 	double xi2, double xi3, double xl2, double xl3, double xl4,
 	double zmol, double zmos, double inclo,
 	char init,
-	double& ep, double& inclp, double& nodep, double& argpp, double& mp,
-	char opsmode
+	double& ep, double& inclp, double& nodep, double& argpp, double& mp
 );
 
 static void dscom
@@ -115,7 +114,7 @@ static void initl
 	char& method,
 	double& ainv, double& ao, double& con41, double& con42, double& cosio,
 	double& cosio2, double& eccsq, double& omeosq, double& posq,
-	double& rp, double& rteosq, double& sinio, double& gsto, char opsmode
+	double& rp, double& rteosq, double& sinio, double& gsto
 );
 
 namespace SGP4Funcs_mod
@@ -198,8 +197,7 @@ namespace SGP4Funcs_mod
 		double xi2, double xi3, double xl2, double xl3, double xl4,
 		double zmol, double zmos, double inclo,
 		char init,
-		double& ep, double& inclp, double& nodep, double& argpp, double& mp,
-		char opsmode
+		double& ep, double& inclp, double& nodep, double& argpp, double& mp
 	)
 	{
 		/* --------------------- local variables ------------------------ */
@@ -290,8 +288,6 @@ namespace SGP4Funcs_mod
 				nodep = fmod(nodep, TWO_PI);
 				//  sgp4fix for afspc written intrinsic functions
 				// nodep used without a trigonometric function ahead
-				if ((nodep < 0.0) && (opsmode == 'a'))
-					nodep = nodep + TWO_PI;
 				xls = mp + argpp + cosip * nodep;
 				dls = pl + pgh - pinc * nodep * sinip;
 				xls = xls + dls;
@@ -299,8 +295,6 @@ namespace SGP4Funcs_mod
 				nodep = atan2(alfdp, betdp);
 				//  sgp4fix for afspc written intrinsic functions
 				// nodep used without a trigonometric function ahead
-				if ((nodep < 0.0) && (opsmode == 'a'))
-					nodep = nodep + TWO_PI;
 				if (fabs(xnoh - nodep) > PI)
 					if (nodep < xnoh)
 						nodep = nodep + TWO_PI;
@@ -1167,7 +1161,7 @@ namespace SGP4Funcs_mod
 		// sgp4fix just pass in xke and j2
 		// gravconsttype whichconst, 
 		double xke, double j2,
-		double ecco, double epoch, double inclo, double no_kozai, char opsmode,
+		double ecco, double epoch, double inclo, double no_kozai,
 		char& method, double& ainv, double& ao, double& con41, double& con42, double& cosio,
 		double& cosio2, double& eccsq, double& omeosq, double& posq,
 		double& rp, double& rteosq, double& sinio, double& gsto, double& no_unkozai
@@ -1230,9 +1224,10 @@ namespace SGP4Funcs_mod
 			gsto1 = gsto1 + TWO_PI;
 		//    }
 		//    else
+		
+		// jedyne u¿ycie gstime_SGP4
 		gsto = gstime_SGP4(epoch + 2433281.5);
 
-		//#include "debug5.cpp"
 	}  // initl
 
 	/*-----------------------------------------------------------------------------
@@ -1319,7 +1314,7 @@ namespace SGP4Funcs_mod
 
 	bool sgp4init
 	(
-		char opsmode, const char satn[5], const double epoch,
+		const char satn[9], const double epoch,
 		const double xbstar, const double xndot, const double xnddot, const double xecco, const double xargpo,
 		const double xinclo, const double xmo, const double xno_kozai,
 		const double xnodeo, elsetrec& satrec
@@ -1348,8 +1343,6 @@ namespace SGP4Funcs_mod
 		// 1.5 e-12, so the threshold was changed to 1.5e-12 for consistency
 		const double temp4 = 1.5e-12;
 
-	
-		satrec.operationmode = opsmode;
 		// new alpha5 or 9-digit number
 		strcpy(satrec.satnum, satn);
 
@@ -1387,7 +1380,7 @@ namespace SGP4Funcs_mod
 
 		// sgp4fix remove satn as it is not needed in initl
 		initl
-		(X_KE, EARTH_J2, satrec.ecco, epoch, satrec.inclo, satrec.no_kozai, satrec.operationmode,
+		(X_KE, EARTH_J2, satrec.ecco, epoch, satrec.inclo, satrec.no_kozai,
 			satrec.method, ainv, ao, satrec.con41, con42, cosio, cosio2, eccsq, omeosq,
 			posq, rp, rteosq, sinio, satrec.gsto, satrec.no_unkozai);
 		satrec.a = pow(satrec.no_unkozai * TUMIN, (-2.0 / 3.0));
@@ -1515,8 +1508,7 @@ namespace SGP4Funcs_mod
 					satrec.xgh2, satrec.xgh3, satrec.xgh4, satrec.xh2,
 					satrec.xh3, satrec.xi2, satrec.xi3, satrec.xl2,
 					satrec.xl3, satrec.xl4, satrec.zmol, satrec.zmos, inclm, satrec.init,
-					satrec.ecco, satrec.inclo, satrec.nodeo, satrec.argpo, satrec.mo,
-					satrec.operationmode
+					satrec.ecco, satrec.inclo, satrec.nodeo, satrec.argpo, satrec.mo
 				);
 
 				argpm = 0.0;
@@ -1816,7 +1808,7 @@ namespace SGP4Funcs_mod
 				satrec.xh3, satrec.xi2, satrec.xi3,
 				satrec.xl2, satrec.xl3, satrec.xl4,
 				satrec.zmol, satrec.zmos, satrec.inclo,
-				'n', ep, xincp, nodep, argpp, mp, satrec.operationmode
+				'n', ep, xincp, nodep, argpp, mp
 			);
 			if (xincp < 0.0)
 			{
@@ -1993,7 +1985,7 @@ namespace SGP4Funcs_mod
 	*    vallado, crawford, hujsak, kelso  2006
 	--------------------------------------------------------------------------- */
 
-	elsetrec twoline2rv(const sgp4::tle_set& set, char opsmode)
+	elsetrec twoline2rv(const sgp4::tle_set& set)
 	{
 		elsetrec satrec;
 
@@ -2039,7 +2031,7 @@ namespace SGP4Funcs_mod
 		double deltamin = 10.0;
 
 		// ---------------- initialize the orbit at sgp4epoch -------------------
-		sgp4init(opsmode, satrec.satnum, (satrec.jdsatepoch + satrec.jdsatepochF) - 2433281.5, satrec.bstar,
+		sgp4init(satrec.satnum, (satrec.jdsatepoch + satrec.jdsatepochF) - 2433281.5, satrec.bstar,
 			satrec.ndot, satrec.nddot, satrec.ecco, satrec.argpo, satrec.inclo, satrec.mo, satrec.no_kozai,
 			satrec.nodeo, satrec);
 
@@ -2074,10 +2066,7 @@ namespace SGP4Funcs_mod
 	*    vallado       2013, 187, eq 3-45
 	* --------------------------------------------------------------------------- */
 
-	double  gstime_SGP4
-	(
-		double jdut1
-	)
+	double  gstime_SGP4(double jdut1)
 	{
 		double       temp, tut1;
 
@@ -2092,218 +2081,4 @@ namespace SGP4Funcs_mod
 
 		return temp;
 	}  // gstime
-
-
-	/* -----------------------------------------------------------------------------
-	*
-	*                           procedure jday_SGP4
-	*
-	*  this procedure finds the julian date given the year, month, day, and time.
-	*    the julian date is defined by each elapsed day since noon, jan 1, 4713 bc.
-	*
-	*  algorithm     : calculate the answer in one step for efficiency
-	*
-	*  author        : david vallado                  719-573-2600    1 mar 2001
-	*
-	*  inputs          description                    range / units
-	*    year        - year                           1900 .. 2100
-	*    mon         - month                          1 .. 12
-	*    day         - day                            1 .. 28,29,30,31
-	*    hr          - universal time hour            0 .. 23
-	*    min         - universal time min             0 .. 59
-	*    sec         - universal time sec             0.0 .. 59.999
-	*
-	*  outputs       :
-	*    jd          - julian date                    days from 4713 bc
-	*    jdfrac      - julian date fraction into day  days from 4713 bc
-	*
-	*  locals        :
-	*    none.
-	*
-	*  coupling      :
-	*    none.
-	*
-	*  references    :
-	*    vallado       2013, 183, alg 14, ex 3-4
-	* --------------------------------------------------------------------------- */
-
-	void    jday_SGP4
-	(
-		int year, int mon, int day, int hr, int minute, double sec,
-		double& jd, double& jdFrac
-	)
-	{
-		jd = 367.0 * year -
-			floor((7 * (year + floor((mon + 9) / 12.0))) * 0.25) +
-			floor(275 * mon / 9.0) +
-			day + 1721013.5;  // use - 678987.0 to go to mjd directly
-		jdFrac = (sec + minute * 60.0 + hr * 3600.0) / 86400.0;
-
-		// check that the day and fractional day are correct
-		if (fabs(jdFrac) > 1.0)
-		{
-			double dtt = floor(jdFrac);
-			jd = jd + dtt;
-			jdFrac = jdFrac - dtt;
-		}
-
-		// - 0.5*sgn(100.0*year + mon - 190002.5) + 0.5;
-	}  // jday
-
-
-	/* -----------------------------------------------------------------------------
-	*
-	*                           procedure days2mdhms_SGP4
-	*
-	*  this procedure converts the day of the year, days, to the equivalent month
-	*    day, hour, minute and second.
-	*
-	*  algorithm     : set up array for the number of days per month
-	*                  find leap year - use 1900 because 2000 is a leap year
-	*                  loop through a temp value while the value is < the days
-	*                  perform int conversions to the correct day and month
-	*                  convert remainder into h m s using type conversions
-	*
-	*  author        : david vallado                  719-573-2600    1 mar 2001
-	*
-	*  inputs          description                    range / units
-	*    year        - year                           1900 .. 2100
-	*    days        - julian day of the year         1.0  .. 366.0
-	*
-	*  outputs       :
-	*    mon         - month                          1 .. 12
-	*    day         - day                            1 .. 28,29,30,31
-	*    hr          - hour                           0 .. 23
-	*    min         - minute                         0 .. 59
-	*    sec         - second                         0.0 .. 59.999
-	*
-	*  locals        :
-	*    dayofyr     - day of year
-	*    temp        - temporary extended values
-	*    inttemp     - temporary int value
-	*    i           - index
-	*    lmonth[13]  - int array containing the number of days per month
-	*
-	*  coupling      :
-	*    none.
-	* --------------------------------------------------------------------------- */
-
-	void    days2mdhms_SGP4
-	(
-		int year, double days,
-		int& mon, int& day, int& hr, int& minute, double& sec
-	)
-	{
-		int i, inttemp, dayofyr;
-		double    temp;
-		int lmonth[] = { 0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
-
-		dayofyr = (int)floor(days);
-		/* ----------------- find month and day of month ---------------- */
-		if ((year % 4) == 0)
-			lmonth[2] = 29;
-
-		i = 1;
-		inttemp = 0;
-		while ((dayofyr > inttemp + lmonth[i]) && (i < 12))
-		{
-			inttemp = inttemp + lmonth[i];
-			i++;
-		}
-		mon = i;
-		day = dayofyr - inttemp;
-
-		/* ----------------- find hours minutes and seconds ------------- */
-		temp = (days - dayofyr) * 24.0;
-		hr = (int)floor(temp);
-		temp = (temp - hr) * 60.0;
-		minute = (int)floor(temp);
-		sec = (temp - minute) * 60.0;
-	}  // days2mdhms
-
-	/* -----------------------------------------------------------------------------
-	*
-	*                           procedure invjday_SGP4
-	*
-	*  this procedure finds the year, month, day, hour, minute and second
-	*  given the julian date. tu can be ut1, tdt, tdb, etc.
-	*
-	*  algorithm     : set up starting values
-	*                  find leap year - use 1900 because 2000 is a leap year
-	*                  find the elapsed days through the year in a loop
-	*                  call routine to find each individual value
-	*
-	*  author        : david vallado                  719-573-2600    1 mar 2001
-	*
-	*  inputs          description                    range / units
-	*    jd          - julian date                    days from 4713 bc
-	*    jdfrac      - julian date fraction into day  days from 4713 bc
-	*
-	*  outputs       :
-	*    year        - year                           1900 .. 2100
-	*    mon         - month                          1 .. 12
-	*    day         - day                            1 .. 28,29,30,31
-	*    hr          - hour                           0 .. 23
-	*    min         - minute                         0 .. 59
-	*    sec         - second                         0.0 .. 59.999
-	*
-	*  locals        :
-	*    days        - day of year plus fractional
-	*                  portion of a day               days
-	*    tu          - julian centuries from 0 h
-	*                  jan 0, 1900
-	*    temp        - temporary double values
-	*    leapyrs     - number of leap years from 1900
-	*
-	*  coupling      :
-	*    days2mdhms  - finds month, day, hour, minute and second given days and year
-	*
-	*  references    :
-	*    vallado       2013, 203, alg 22, ex 3-13
-	* --------------------------------------------------------------------------- */
-
-	void    invjday_SGP4
-	(
-		double jd, double jdfrac,
-		int& year, int& mon, int& day,
-		int& hr, int& minute, double& sec
-	)
-	{
-		int leapyrs;
-		double dt, days, tu, temp;
-
-		// check jdfrac for multiple days
-		if (fabs(jdfrac) >= 1.0)
-		{
-			jd = jd + floor(jdfrac);
-			jdfrac = jdfrac - floor(jdfrac);
-		}
-
-		// check for fraction of a day included in the jd
-		dt = jd - floor(jd) - 0.5;
-		if (fabs(dt) > 0.00000001)
-		{
-			jd = jd - dt;
-			jdfrac = jdfrac + dt;
-		}
-
-		/* --------------- find year and days of the year --------------- */
-		temp = jd - 2415019.5;
-		tu = temp / 365.25;
-		year = 1900 + (int)floor(tu);
-		leapyrs = (int)floor((year - 1901) * 0.25);
-
-		days = floor(temp - ((year - 1900) * 365.0 + leapyrs));
-
-		/* ------------ check for case of beginning of a year ----------- */
-		if (days + jdfrac < 1.0)
-		{
-			year = year - 1;
-			leapyrs = (int)floor((year - 1901) * 0.25);
-			days = floor(temp - ((year - 1900) * 365.0 + leapyrs));
-		}
-
-		/* ----------------- find remaining data  ------------------------- */
-		days2mdhms_SGP4(year, days + jdfrac, mon, day, hr, minute, sec);
-	}  // invjday
 } // namespace SGP4Funcs

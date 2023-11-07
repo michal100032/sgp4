@@ -50,7 +50,7 @@ void assert_d3(double d1[3], double d2[3], const char* msg) {
 	bool a2 = abs(d1[2] - d2[2]) < epsilon;
 
 	if (!a0 || !a1 || !a2) {
-		std::cerr << "ASSERTION FAILED!" << std::endl;
+		std::cerr << " --------- ASSERTION FAILED! --------- " << std::endl;
 		std::cerr << msg << std::endl;
 	}
 }
@@ -69,7 +69,7 @@ int main() {
 		'c', 0, 'i', SGP4Funcs::wgs84, startmfe, stopmfe, deltamin, sgp4_rec);
 	
 	SGP4Funcs_mod::elsetrec sgp4_mod_rec = 
-		SGP4Funcs_mod::twoline2rv(entry, 'i');
+		SGP4Funcs_mod::twoline2rv(entry);
 
 
 	while (true) {
@@ -94,7 +94,7 @@ int main() {
 		}
 		std::cout << "SGP4_mod: " << std::endl;
 		print_coords_from_pos(pos_sgp4_mod, now);
-		
+		pos_sgp4[1] += 0.1f;
 		assert_d3(pos_sgp4, pos_sgp4_mod,
 			"SGP4 and SGP4_mod yield different positions");
 	
