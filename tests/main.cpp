@@ -60,16 +60,16 @@ int main() {
 	char tle_line_one[130], tle_line_two[130];
 	split_tle(TLE, tle_line_one, tle_line_two);
 
-	SGP4Funcs::elsetrec sgp4_rec;
-	SGP4Funcs_mod::elsetrec sgp4_mod_rec;
 
 	auto entry = sgp4::parse_tle_entry(TLE);
 
+	SGP4Funcs::elsetrec sgp4_rec;
 	double startmfe, stopmfe, deltamin;
 	SGP4Funcs::twoline2rv(tle_line_one, tle_line_two,
 		'c', 0, 'i', SGP4Funcs::wgs84, startmfe, stopmfe, deltamin, sgp4_rec);
 	
-	SGP4Funcs_mod::twoline2rv(entry, 'i', SGP4Funcs_mod::wgs84, sgp4_mod_rec);
+	SGP4Funcs_mod::elsetrec sgp4_mod_rec = 
+		SGP4Funcs_mod::twoline2rv(entry, 'i');
 
 
 	while (true) {
@@ -97,7 +97,7 @@ int main() {
 		
 		assert_d3(pos_sgp4, pos_sgp4_mod,
 			"SGP4 and SGP4_mod yield different positions");
-		pos_sgp4[0] += 1.0;
+	
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 		std::cout << std::endl << std::endl;
 	}

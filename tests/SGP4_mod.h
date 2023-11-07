@@ -9,39 +9,30 @@
 
 namespace SGP4Funcs_mod
 {
-
-	// -------------------------- structure declarations ----------------------------
-	typedef enum
-	{
-	  wgs72old,
-	  wgs72,
-	  wgs84
-	} gravconsttype;
-
 	typedef struct elsetrec
 	{
 	  char      satnum[6];
-	  int       epochyr, epochtynumrev;
-	  int       error;
-	  char      operationmode;
-	  char      init, method;
+	  int       epochyr = 0, epochtynumrev = 0;
+	  int       error = 0;
+	  char      operationmode = 0;
+	  char      init = 0, method = 0;
 
 	  /* Near Earth */
 	  int    isimp;
-	  double aycof  , con41  , cc1    , cc4      , cc5    , d2      , d3   , d4    ,
-			 delmo  , eta    , argpdot, omgcof   , sinmao , t       , t2cof, t3cof ,
-			 t4cof  , t5cof  , x1mth2 , x7thm1   , mdot   , nodedot, xlcof , xmcof ,
-			 nodecf;
+	  double aycof  = 0.0, con41  = 0.0, cc1     = 0.0, cc4    = 0.0, cc5    = 0.0, d2      = 0.0, d3    = 0.0, d4    = 0.0,
+			 delmo  = 0.0, eta    = 0.0, argpdot = 0.0, omgcof = 0.0, sinmao = 0.0, t       = 0.0, t2cof = 0.0, t3cof = 0.0,
+			 t4cof  = 0.0, t5cof  = 0.0, x1mth2  = 0.0, x7thm1 = 0.0, mdot   = 0.0, nodedot = 0.0, xlcof = 0.0, xmcof = 0.0,
+			 nodecf = 0;
 
 	  /* Deep Space */
-	  int    irez;
-	  double d2201  , d2211  , d3210  , d3222    , d4410  , d4422   , d5220 , d5232 ,
-			 d5421  , d5433  , dedt   , del1     , del2   , del3    , didt  , dmdt  ,
-			 dnodt  , domdt  , e3     , ee2      , peo    , pgho    , pho   , pinco ,
-			 plo    , se2    , se3    , sgh2     , sgh3   , sgh4    , sh2   , sh3   ,
-			 si2    , si3    , sl2    , sl3      , sl4    , gsto    , xfact , xgh2  ,
-			 xgh3   , xgh4   , xh2    , xh3      , xi2    , xi3     , xl2   , xl3   ,
-			 xl4    , xlamo  , zmol   , zmos     , atime  , xli     , xni;
+	  int    irez = 0;
+	  double d2201 = 0.0, d2211 = 0.0, d3210 = 0.0, d3222 = 0.0, d4410 = 0.0, d4422 = 0.0, d5220 = 0.0, d5232 = 0.0,
+			 d5421 = 0.0, d5433 = 0.0, dedt  = 0.0, del1  = 0.0, del2  = 0.0, del3  = 0.0, didt  = 0.0, dmdt  = 0.0,
+			 dnodt = 0.0, domdt = 0.0, e3    = 0.0, ee2   = 0.0, peo   = 0.0, pgho  = 0.0, pho   = 0.0, pinco = 0.0,
+			 plo   = 0.0, se2   = 0.0, se3   = 0.0, sgh2  = 0.0, sgh3  = 0.0, sgh4  = 0.0, sh2   = 0.0, sh3   = 0.0,
+			 si2   = 0.0, si3   = 0.0, sl2   = 0.0, sl3   = 0.0, sl4   = 0.0, gsto  = 0.0, xfact = 0.0, xgh2  = 0.0,
+			 xgh3  = 0.0, xgh4  = 0.0, xh2   = 0.0, xh3   = 0.0, xi2   = 0.0, xi3   = 0.0, xl2   = 0.0, xl3   = 0.0,
+			 xl4   = 0.0, xlamo = 0.0, zmol  = 0.0, zmos  = 0.0, atime = 0.0, xli   = 0.0, xni = 0.0;
 	  //
 	  // from TLE: 
 	  // epochdays - day fraction (exactly as in tle),
@@ -62,67 +53,41 @@ namespace SGP4Funcs_mod
 	  // ecco - eccentricity 
 
 
-	  double a, altp, alta, epochdays, jdsatepoch, jdsatepochF, nddot, ndot,
-			 bstar, rcse, inclo, nodeo, ecco, argpo, mo, no_kozai;
+	  double a = 0.0, altp = 0.0, alta = 0.0, epochdays = 0.0, 
+		  jdsatepoch = 0.0, jdsatepochF = 0.0, nddot = 0.0, ndot = 0.0,
+		  bstar = 0.0, rcse = 0.0, inclo = 0.0, nodeo = 0.0, ecco = 0.0,
+		  argpo = 0.0, mo = 0.0, no_kozai = 0.0;
 	  // sgp4fix add new variables from tle
-	  char  classification, intldesg[11];
-	  int   ephtype;
-	  long  elnum    , revnum;
+	  char  classification = 0, intldesg[11];
+	  int   ephtype = 0;
+	  long  elnum = 0, revnum = 0;
 	  // sgp4fix add unkozai'd variable
-	  double no_unkozai;
+	  double no_unkozai = 0.0;
 	  // sgp4fix add singly averaged variables
-	  double am     , em     , im     , Om       , om     , mm      , nm;
+	  double am = 0.0, em = 0.0, im = 0.0, Om = 0.0, om = 0.0, mm = 0.0, nm = 0.0;
 	  // sgp4fix add constant parameters to eliminate mutliple calls during execution
-	  double tumin, mus, radiusearthkm, xke, j2, j3, j4, j3oj2;
-
+	  
 	  //       Additional elements to capture relevant TLE and object information:       
-	  long dia_mm; // RSO dia in mm
-	  double period_sec; // Period in seconds
-	  unsigned char active; // "Active S/C" flag (0=n, 1=y) 
-	  unsigned char not_orbital; // "Orbiting S/C" flag (0=n, 1=y)  
-	  double rcs_m2; // "RCS (m^2)" storage  
-
+	  long dia_mm = 0; // RSO dia in mm
+	  double period_sec = 0; // Period in seconds
+	  unsigned char active = 0; // "Active S/C" flag (0=n, 1=y) 
+	  unsigned char not_orbital = 0; // "Orbiting S/C" flag (0=n, 1=y)  
+	  double rcs_m2 = 0; // "RCS (m^2)" storage  
 	} elsetrec;
 	//	public class SGP4Class
 	//	{
 
 	bool sgp4init
 		(
-		gravconsttype whichconst, char opsmode, const char satn[9], const double epoch,
+		char opsmode, const char satn[9], const double epoch,
 		const double xbstar, const double xndot, const double xnddot, const double xecco, const double xargpo,
 		const double xinclo, const double xmo, const double xno,
 		const double xnodeo, elsetrec& satrec
 		);
 
-	bool sgp4
-		(
-		// no longer need gravconsttype whichconst, all data contained in satrec
-		elsetrec& satrec, double tsince,
-		double r[3], double v[3]
-		);
+	bool sgp4(elsetrec& satrec, double tsince, double r[3], double v[3]);
 
-	void getgravconst
-		(
-		gravconsttype whichconst,
-		double& tumin,
-		double& mus,
-		double& radiusearthkm,
-		double& xke,
-		double& j2,
-		double& j3,
-		double& j4,
-		double& j3oj2
-		);
-
-	// older sgp4io methods
-	// removed typerun, typeinput, startmfe, stopmfe, deltamin
-	void twoline2rv
-	(
-		const sgp4::tle_set& set,
-		char opsmode,
-		gravconsttype whichconst,
-		elsetrec& satrec
-	);
+	elsetrec twoline2rv(const sgp4::tle_set& set, char opsmode);
 
 	// older sgp4ext methods
 	double  gstime_SGP4

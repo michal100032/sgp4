@@ -7,6 +7,24 @@ static const double PI = 3.14159265358979323846;
 static const double TWO_PI = 2 * PI;
 static const double DEG_TO_RAD = PI / 180.0;
 
+// gravitational parameter of the Earth [km^3/s^2]
+static const double EARTH_GRV = 398600.5;
+
+// radius of the Earth [km]
+static const double EARTH_RAD = 6378.137;
+
+// ??????
+static const double X_KE = 60.0 / sqrt(EARTH_RAD * EARTH_RAD * EARTH_RAD / EARTH_GRV);
+
+// ???? angular speed in an orbit of radius = EARTH_RAD? [rad/min]
+
+// earth zonal harmonic model
+static const double TUMIN = 1.0 / X_KE;
+static const double EARTH_J2 = 0.00108262998905;
+static const double EARTH_J3 = -0.00000253215306;
+static const double EARTH_J4 = -0.00000161098761;
+static const double EARTH_J3_TO_J2 = EARTH_J3 / EARTH_J2;
+
 // define global variables here, not in .h
 // use extern in main
 static char help = 'n';
@@ -1301,7 +1319,7 @@ namespace SGP4Funcs_mod
 
 	bool sgp4init
 	(
-		gravconsttype whichconst, char opsmode, const char satn[5], const double epoch,
+		char opsmode, const char satn[5], const double epoch,
 		const double xbstar, const double xndot, const double xnddot, const double xecco, const double xargpo,
 		const double xinclo, const double xmo, const double xno_kozai,
 		const double xnodeo, elsetrec& satrec
@@ -1330,54 +1348,10 @@ namespace SGP4Funcs_mod
 		// 1.5 e-12, so the threshold was changed to 1.5e-12 for consistency
 		const double temp4 = 1.5e-12;
 
-		/* ----------- set all near earth variables to zero ------------ */
-		satrec.isimp = 0;   satrec.method = 'n'; satrec.aycof = 0.0;
-		satrec.con41 = 0.0; satrec.cc1 = 0.0; satrec.cc4 = 0.0;
-		satrec.cc5 = 0.0; satrec.d2 = 0.0; satrec.d3 = 0.0;
-		satrec.d4 = 0.0; satrec.delmo = 0.0; satrec.eta = 0.0;
-		satrec.argpdot = 0.0; satrec.omgcof = 0.0; satrec.sinmao = 0.0;
-		satrec.t = 0.0; satrec.t2cof = 0.0; satrec.t3cof = 0.0;
-		satrec.t4cof = 0.0; satrec.t5cof = 0.0; satrec.x1mth2 = 0.0;
-		satrec.x7thm1 = 0.0; satrec.mdot = 0.0; satrec.nodedot = 0.0;
-		satrec.xlcof = 0.0; satrec.xmcof = 0.0; satrec.nodecf = 0.0;
-
-		/* ----------- set all deep space variables to zero ------------ */
-		satrec.irez = 0;   satrec.d2201 = 0.0; satrec.d2211 = 0.0;
-		satrec.d3210 = 0.0; satrec.d3222 = 0.0; satrec.d4410 = 0.0;
-		satrec.d4422 = 0.0; satrec.d5220 = 0.0; satrec.d5232 = 0.0;
-		satrec.d5421 = 0.0; satrec.d5433 = 0.0; satrec.dedt = 0.0;
-		satrec.del1 = 0.0; satrec.del2 = 0.0; satrec.del3 = 0.0;
-		satrec.didt = 0.0; satrec.dmdt = 0.0; satrec.dnodt = 0.0;
-		satrec.domdt = 0.0; satrec.e3 = 0.0; satrec.ee2 = 0.0;
-		satrec.peo = 0.0; satrec.pgho = 0.0; satrec.pho = 0.0;
-		satrec.pinco = 0.0; satrec.plo = 0.0; satrec.se2 = 0.0;
-		satrec.se3 = 0.0; satrec.sgh2 = 0.0; satrec.sgh3 = 0.0;
-		satrec.sgh4 = 0.0; satrec.sh2 = 0.0; satrec.sh3 = 0.0;
-		satrec.si2 = 0.0; satrec.si3 = 0.0; satrec.sl2 = 0.0;
-		satrec.sl3 = 0.0; satrec.sl4 = 0.0; satrec.gsto = 0.0;
-		satrec.xfact = 0.0; satrec.xgh2 = 0.0; satrec.xgh3 = 0.0;
-		satrec.xgh4 = 0.0; satrec.xh2 = 0.0; satrec.xh3 = 0.0;
-		satrec.xi2 = 0.0; satrec.xi3 = 0.0; satrec.xl2 = 0.0;
-		satrec.xl3 = 0.0; satrec.xl4 = 0.0; satrec.xlamo = 0.0;
-		satrec.zmol = 0.0; satrec.zmos = 0.0; satrec.atime = 0.0;
-		satrec.xli = 0.0; satrec.xni = 0.0;
-
-		/* ------------------------ earth constants ----------------------- */
-		// sgp4fix identify constants and allow alternate values
-		// this is now the only call for the constants
-		getgravconst(whichconst, satrec.tumin, satrec.mus, satrec.radiusearthkm, satrec.xke,
-			satrec.j2, satrec.j3, satrec.j4, satrec.j3oj2);
-
-		//-------------------------------------------------------------------------
-
-		satrec.error = 0;
+	
 		satrec.operationmode = opsmode;
 		// new alpha5 or 9-digit number
-#ifdef _MSC_VER
-		strcpy_s(satrec.satnum, 6 * sizeof(char), satn);
-#else
 		strcpy(satrec.satnum, satn);
-#endif
 
 		// sgp4fix - note the following variables are also passed directly via satrec.
 		// it is possible to streamline the sgp4init call by deleting the "x"
@@ -1401,9 +1375,10 @@ namespace SGP4Funcs_mod
 		/* ------------------------ earth constants ----------------------- */
 		// sgp4fix identify constants and allow alternate values no longer needed
 		// getgravconst( whichconst, tumin, mu, radiusearthkm, xke, j2, j3, j4, j3oj2 );
-		ss = 78.0 / satrec.radiusearthkm + 1.0;
+		ss = 78.0 / EARTH_RAD + 1.0;
+		
 		// sgp4fix use multiply for speed instead of pow
-		qzms2ttemp = (120.0 - 78.0) / satrec.radiusearthkm;
+		qzms2ttemp = (120.0 - 78.0) / EARTH_RAD;
 		qzms2t = qzms2ttemp * qzms2ttemp * qzms2ttemp * qzms2ttemp;
 		x2o3 = 2.0 / 3.0;
 
@@ -1412,13 +1387,12 @@ namespace SGP4Funcs_mod
 
 		// sgp4fix remove satn as it is not needed in initl
 		initl
-		(satrec.xke, satrec.j2, satrec.ecco, epoch, satrec.inclo, satrec.no_kozai, satrec.operationmode,
+		(X_KE, EARTH_J2, satrec.ecco, epoch, satrec.inclo, satrec.no_kozai, satrec.operationmode,
 			satrec.method, ainv, ao, satrec.con41, con42, cosio, cosio2, eccsq, omeosq,
 			posq, rp, rteosq, sinio, satrec.gsto, satrec.no_unkozai);
-		satrec.a = pow(satrec.no_unkozai * satrec.tumin, (-2.0 / 3.0));
+		satrec.a = pow(satrec.no_unkozai * TUMIN, (-2.0 / 3.0));
 		satrec.alta = satrec.a * (1.0 + satrec.ecco) - 1.0;
 		satrec.altp = satrec.a * (1.0 - satrec.ecco) - 1.0;
-		satrec.error = 0;
 
 		// sgp4fix remove this check as it is unnecessary
 		// the mrt check in sgp4 handles decaying satellite cases even if the starting
@@ -1432,11 +1406,11 @@ namespace SGP4Funcs_mod
 		if ((omeosq >= 0.0) || (satrec.no_unkozai >= 0.0))
 		{
 			satrec.isimp = 0;
-			if (rp < (220.0 / satrec.radiusearthkm + 1.0))
+			if (rp < (220.0 / EARTH_RAD + 1.0))
 				satrec.isimp = 1;
 			sfour = ss;
 			qzms24 = qzms2t;
-			perige = (rp - 1.0) * satrec.radiusearthkm;
+			perige = (rp - 1.0) * EARTH_RAD;
 
 			/* - for perigees below 156 km, s and qoms2t are altered - */
 			if (perige < 156.0)
@@ -1445,9 +1419,9 @@ namespace SGP4Funcs_mod
 				if (perige < 98.0)
 					sfour = 20.0;
 				// sgp4fix use multiply for speed instead of pow
-				qzms24temp = (120.0 - sfour) / satrec.radiusearthkm;
+				qzms24temp = (120.0 - sfour) / EARTH_RAD;
 				qzms24 = qzms24temp * qzms24temp * qzms24temp * qzms24temp;
-				sfour = sfour / satrec.radiusearthkm + 1.0;
+				sfour = sfour / EARTH_RAD + 1.0;
 			}
 			pinvsq = 1.0 / posq;
 
@@ -1459,25 +1433,25 @@ namespace SGP4Funcs_mod
 			coef = qzms24 * pow(tsi, 4.0);
 			coef1 = coef / pow(psisq, 3.5);
 			cc2 = coef1 * satrec.no_unkozai * (ao * (1.0 + 1.5 * etasq + eeta *
-				(4.0 + etasq)) + 0.375 * satrec.j2 * tsi / psisq * satrec.con41 *
+				(4.0 + etasq)) + 0.375 * EARTH_J2 * tsi / psisq * satrec.con41 *
 				(8.0 + 3.0 * etasq * (8.0 + etasq)));
 			satrec.cc1 = satrec.bstar * cc2;
 			cc3 = 0.0;
 			if (satrec.ecco > 1.0e-4)
-				cc3 = -2.0 * coef * tsi * satrec.j3oj2 * satrec.no_unkozai * sinio / satrec.ecco;
+				cc3 = -2.0 * coef * tsi * EARTH_J3_TO_J2 * satrec.no_unkozai * sinio / satrec.ecco;
 			satrec.x1mth2 = 1.0 - cosio2;
 			satrec.cc4 = 2.0 * satrec.no_unkozai * coef1 * ao * omeosq *
 				(satrec.eta * (2.0 + 0.5 * etasq) + satrec.ecco *
-					(0.5 + 2.0 * etasq) - satrec.j2 * tsi / (ao * psisq) *
+					(0.5 + 2.0 * etasq) - EARTH_J2 * tsi / (ao * psisq) *
 					(-3.0 * satrec.con41 * (1.0 - 2.0 * eeta + etasq *
 						(1.5 - 0.5 * eeta)) + 0.75 * satrec.x1mth2 *
 						(2.0 * etasq - eeta * (1.0 + etasq)) * cos(2.0 * satrec.argpo)));
 			satrec.cc5 = 2.0 * coef1 * ao * omeosq * (1.0 + 2.75 *
 				(etasq + eeta) + eeta * etasq);
 			cosio4 = cosio2 * cosio2;
-			temp1 = 1.5 * satrec.j2 * pinvsq * satrec.no_unkozai;
-			temp2 = 0.5 * temp1 * satrec.j2 * pinvsq;
-			temp3 = -0.46875 * satrec.j4 * pinvsq * pinvsq * satrec.no_unkozai;
+			temp1 = 1.5 * EARTH_J2 * pinvsq * satrec.no_unkozai;
+			temp2 = 0.5 * temp1 * EARTH_J2 * pinvsq;
+			temp3 = -0.46875 * EARTH_J4 * pinvsq * pinvsq * satrec.no_unkozai;
 			satrec.mdot = satrec.no_unkozai + 0.5 * temp1 * rteosq * satrec.con41 + 0.0625 *
 				temp2 * rteosq * (13.0 - 78.0 * cosio2 + 137.0 * cosio4);
 			satrec.argpdot = -0.5 * temp1 * con42 + 0.0625 * temp2 *
@@ -1495,10 +1469,10 @@ namespace SGP4Funcs_mod
 			satrec.t2cof = 1.5 * satrec.cc1;
 			// sgp4fix for divide by zero with xinco = 180 deg
 			if (fabs(cosio + 1.0) > 1.5e-12)
-				satrec.xlcof = -0.25 * satrec.j3oj2 * sinio * (3.0 + 5.0 * cosio) / (1.0 + cosio);
+				satrec.xlcof = -0.25 * EARTH_J3_TO_J2 * sinio * (3.0 + 5.0 * cosio) / (1.0 + cosio);
 			else
-				satrec.xlcof = -0.25 * satrec.j3oj2 * sinio * (3.0 + 5.0 * cosio) / temp4;
-			satrec.aycof = -0.5 * satrec.j3oj2 * sinio;
+				satrec.xlcof = -0.25 * EARTH_J3_TO_J2 * sinio * (3.0 + 5.0 * cosio) / temp4;
+			satrec.aycof = -0.5 * EARTH_J3_TO_J2 * sinio;
 			// sgp4fix use multiply for speed instead of pow
 			delmotemp = 1.0 + satrec.eta * cos(satrec.mo);
 			satrec.delmo = delmotemp * delmotemp * delmotemp;
@@ -1551,7 +1525,7 @@ namespace SGP4Funcs_mod
 
 				dsinit
 				(
-					satrec.xke,
+					X_KE,
 					cosim, emsq, satrec.argpo, s1, s2, s3, s4, s5, sinim, ss1, ss2, ss3, ss4,
 					ss5, sz1, sz3, sz11, sz13, sz21, sz23, sz31, sz33, satrec.t, tc,
 					satrec.gsto, satrec.mo, satrec.mdot, satrec.no_unkozai, satrec.nodeo,
@@ -1713,11 +1687,9 @@ namespace SGP4Funcs_mod
 		x2o3 = 2.0 / 3.0;
 		// sgp4fix identify constants and allow alternate values
 		// getgravconst( whichconst, tumin, mu, radiusearthkm, xke, j2, j3, j4, j3oj2 );
-		vkmpersec = satrec.radiusearthkm * satrec.xke / 60.0;
+		vkmpersec = EARTH_J2 * X_KE / 60.0;
 
-		/* --------------------- clear sgp4 error flag ----------------- */
 		satrec.t = tsince;
-		satrec.error = 0;
 
 		/* ------- update for secular gravity and atmospheric drag ----- */
 		xmdf = satrec.mo + satrec.mdot * satrec.t;
@@ -1782,8 +1754,8 @@ namespace SGP4Funcs_mod
 			// sgp4fix add return
 			return false;
 		}
-		am = pow((satrec.xke / nm), x2o3) * tempa * tempa;
-		nm = satrec.xke / pow(am, 1.5);
+		am = pow((X_KE / nm), x2o3) * tempa * tempa;
+		nm = X_KE / pow(am, 1.5);
 		em = em - tempe;
 
 		// fix tolerance for error recognition
@@ -1866,12 +1838,12 @@ namespace SGP4Funcs_mod
 		{
 			sinip = sin(xincp);
 			cosip = cos(xincp);
-			satrec.aycof = -0.5 * satrec.j3oj2 * sinip;
+			satrec.aycof = -0.5 * EARTH_J3_TO_J2 * sinip;
 			// sgp4fix for divide by zero for xincp = 180 deg
 			if (fabs(cosip + 1.0) > 1.5e-12)
-				satrec.xlcof = -0.25 * satrec.j3oj2 * sinip * (3.0 + 5.0 * cosip) / (1.0 + cosip);
+				satrec.xlcof = -0.25 * EARTH_J3_TO_J2 * sinip * (3.0 + 5.0 * cosip) / (1.0 + cosip);
 			else
-				satrec.xlcof = -0.25 * satrec.j3oj2 * sinip * (3.0 + 5.0 * cosip) / temp4;
+				satrec.xlcof = -0.25 * EARTH_J3_TO_J2 * sinip * (3.0 + 5.0 * cosip) / temp4;
 		}
 		axnl = ep * cos(argpp);
 		temp = 1.0 / (am * (1.0 - ep * ep));
@@ -1922,7 +1894,7 @@ namespace SGP4Funcs_mod
 			sin2u = (cosu + cosu) * sinu;
 			cos2u = 1.0 - 2.0 * sinu * sinu;
 			temp = 1.0 / pl;
-			temp1 = 0.5 * satrec.j2 * temp;
+			temp1 = 0.5 * EARTH_J2 * temp;
 			temp2 = temp1 * temp;
 
 			/* -------------- update for short period periodics ------------ */
@@ -1938,9 +1910,9 @@ namespace SGP4Funcs_mod
 			su = su - 0.25 * temp2 * satrec.x7thm1 * sin2u;
 			xnode = nodep + 1.5 * temp2 * cosip * sin2u;
 			xinc = xincp + 1.5 * temp2 * cosip * sinip * cos2u;
-			mvt = rdotl - nm * temp1 * satrec.x1mth2 * sin2u / satrec.xke;
+			mvt = rdotl - nm * temp1 * satrec.x1mth2 * sin2u / X_KE;
 			rvdot = rvdotl + nm * temp1 * (satrec.x1mth2 * cos2u +
-				1.5 * satrec.con41) / satrec.xke;
+				1.5 * satrec.con41) / X_KE;
 
 			/* --------------------- orientation vectors ------------------- */
 			sinsu = sin(su);
@@ -1959,9 +1931,9 @@ namespace SGP4Funcs_mod
 			vz = sini * cossu;
 
 			/* --------- position and velocity (in km and km/sec) ---------- */
-			r[0] = (mrt * ux) * satrec.radiusearthkm;
-			r[1] = (mrt * uy) * satrec.radiusearthkm;
-			r[2] = (mrt * uz) * satrec.radiusearthkm;
+			r[0] = (mrt * ux) * EARTH_RAD;
+			r[1] = (mrt * uy) * EARTH_RAD;
+			r[2] = (mrt * uz) * EARTH_RAD;
 			v[0] = (mvt * ux + rvdot * vx) * vkmpersec;
 			v[1] = (mvt * uy + rvdot * vy) * vkmpersec;
 			v[2] = (mvt * uz + rvdot * vz) * vkmpersec;
@@ -1978,96 +1950,6 @@ namespace SGP4Funcs_mod
 		//#include "debug7.cpp"
 		return true;
 	}  // sgp4
-
-
-
-
-
-	/* -----------------------------------------------------------------------------
-	*
-	*                           function getgravconst
-	*
-	*  this function gets constants for the propagator. note that mu is identified to
-	*    facilitiate comparisons with newer models. the common useage is wgs72.
-	*
-	*  author        : david vallado                  719-573-2600   21 jul 2006
-	*
-	*  inputs        :
-	*    whichconst  - which set of constants to use  wgs72old, wgs72, wgs84
-	*
-	*  outputs       :
-	*    tumin       - minutes in one time unit
-	*    mu          - earth gravitational parameter
-	*    radiusearthkm - radius of the earth in km
-	*    xke         - reciprocal of tumin
-	*    j2, j3, j4  - un-normalized zonal harmonic values
-	*    j3oj2       - j3 divided by j2
-	*
-	*  locals        :
-	*
-	*  coupling      :
-	*    none
-	*
-	*  references    :
-	*    norad spacetrack report #3
-	*    vallado, crawford, hujsak, kelso  2006
-	--------------------------------------------------------------------------- */
-
-	void getgravconst
-	(
-		gravconsttype whichconst,
-		double& tumin,
-		double& mus,
-		double& radiusearthkm,
-		double& xke,
-		double& j2,
-		double& j3,
-		double& j4,
-		double& j3oj2
-	)
-	{
-
-		switch (whichconst)
-		{
-			// -- wgs-72 low precision str#3 constants --
-		case wgs72old:
-			mus = 398600.79964;        // in km3 / s2
-			radiusearthkm = 6378.135;     // km
-			xke = 0.0743669161;        // reciprocal of tumin
-			tumin = 1.0 / xke;
-			j2 = 0.001082616;
-			j3 = -0.00000253881;
-			j4 = -0.00000165597;
-			j3oj2 = j3 / j2;
-			break;
-			// ------------ wgs-72 constants ------------
-		case wgs72:
-			mus = 398600.8;            // in km3 / s2
-			radiusearthkm = 6378.135;     // km
-			xke = 60.0 / sqrt(radiusearthkm * radiusearthkm * radiusearthkm / mus);
-			tumin = 1.0 / xke;
-			j2 = 0.001082616;
-			j3 = -0.00000253881;
-			j4 = -0.00000165597;
-			j3oj2 = j3 / j2;
-			break;
-		case wgs84:
-			// ------------ wgs-84 constants ------------
-			mus = 398600.5;            // in km3 / s2
-			radiusearthkm = 6378.137;     // km
-			xke = 60.0 / sqrt(radiusearthkm * radiusearthkm * radiusearthkm / mus);
-			tumin = 1.0 / xke;
-			j2 = 0.00108262998905;
-			j3 = -0.00000253215306;
-			j4 = -0.00000161098761;
-			j3oj2 = j3 / j2;
-			break;
-		default:
-			fprintf(stderr, "unknown gravity option (%d)\n", whichconst);
-			break;
-		}
-
-	}   // getgravconst
 
 	// older sgp4io methods
 	/* -----------------------------------------------------------------------------
@@ -2111,15 +1993,9 @@ namespace SGP4Funcs_mod
 	*    vallado, crawford, hujsak, kelso  2006
 	--------------------------------------------------------------------------- */
 
-	void twoline2rv
-	(
-		const sgp4::tle_set& set,
-		char opsmode,
-		gravconsttype whichconst,
-		elsetrec& satrec
-	)
+	elsetrec twoline2rv(const sgp4::tle_set& set, char opsmode)
 	{
-		satrec.error = 0;
+		elsetrec satrec;
 
 		satrec.classification = set.classification == sgp4::tle_set::classification_type::classified ? 'C' : (
 								set.classification == sgp4::tle_set::classification_type::secret ? 'S' : 'U'
@@ -2163,9 +2039,11 @@ namespace SGP4Funcs_mod
 		double deltamin = 10.0;
 
 		// ---------------- initialize the orbit at sgp4epoch -------------------
-		sgp4init(whichconst, opsmode, satrec.satnum, (satrec.jdsatepoch + satrec.jdsatepochF) - 2433281.5, satrec.bstar,
+		sgp4init(opsmode, satrec.satnum, (satrec.jdsatepoch + satrec.jdsatepochF) - 2433281.5, satrec.bstar,
 			satrec.ndot, satrec.nddot, satrec.ecco, satrec.argpo, satrec.inclo, satrec.mo, satrec.no_kozai,
 			satrec.nodeo, satrec);
+
+		return satrec;
 	} // twoline2rv
 
 
