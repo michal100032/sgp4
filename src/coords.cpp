@@ -1,6 +1,8 @@
 #include "sgp4/coords.hpp"
 #include "sgp4/time_utils.hpp"
 
+#include <cmath>
+
 static const double PI = 3.14159265359;
 static const double EARTH_FLAT = 1.0 / 298.257223563;
 static const double EARTH_SEMI_MAJOR = 6378.137; // km

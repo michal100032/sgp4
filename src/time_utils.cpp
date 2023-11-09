@@ -1,6 +1,7 @@
 #include "sgp4/time_utils.hpp"
 
 #include <iostream>
+#include <cmath>
 
 // rounds seconds down!
 std::tm sgp4::time_utils::to_tm(std::chrono::utc_clock::time_point time) {

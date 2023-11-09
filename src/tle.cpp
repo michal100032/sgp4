@@ -1,5 +1,6 @@
 #include "sgp4/tle.hpp"
 
+#include <cmath>
 #include <sstream>
 #include <charconv>
 
