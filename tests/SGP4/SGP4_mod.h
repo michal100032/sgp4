@@ -72,13 +72,7 @@ namespace SGP4Funcs_mod {
 	  double rcs_m2 = 0; // "RCS (m^2)" storage  
 	};
 	
-	bool sgp4init
-		(
-		const char satn[9], const double epoch,
-		const double xbstar, const double xndot, const double xnddot, const double xecco, const double xargpo,
-		const double xinclo, const double xmo, const double xno,
-		const double xnodeo, elsetrec& satrec
-		);
+	bool sgp4init(elsetrec& satrec);
 
 	bool sgp4(elsetrec& satrec, double tsince, double r[3], double v[3]);
 

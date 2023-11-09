@@ -5,8 +5,10 @@
 #include <cassert>
 #include <thread>
 
-#include "SGP4.h"
-#include "SGP4_mod.h"
+#include "SGP4/SGP4.h"
+#include "SGP4/SGP4_mod.h"
+#include "SGP4/SGP4_mod_near.h"
+
 #include "sgp4/sgp4.hpp"
 
 static const double PI = 3.14159265359;
@@ -42,7 +44,7 @@ void print_coords_from_pos(double pos[3], std::chrono::utc_clock::time_point tim
 			  << (coords.longitude * RAD_TO_DEG) << std::endl;
 }
 
-void assert_d3(double d1[3], double d2[3], const char* msg) {
+bool assert_d3(double d1[3], double d2[3], const char* msg) {
 	static const double epsilon = 1e-4;
 
 	bool a0 = abs(d1[0] - d2[0]) < epsilon;
@@ -52,7 +54,9 @@ void assert_d3(double d1[3], double d2[3], const char* msg) {
 	if (!a0 || !a1 || !a2) {
 		std::cerr << " --------- ASSERTION FAILED! --------- " << std::endl;
 		std::cerr << msg << std::endl;
+		return false;
 	}
+	return true;
 }
 
 
@@ -71,10 +75,11 @@ int main() {
 	SGP4Funcs_mod::elsetrec sgp4_mod_rec = 
 		SGP4Funcs_mod::twoline2rv(entry);
 
+	SGP4Funcs_mod_near::elsetrec sgp4_near_rec = SGP4Funcs_mod_near::twoline2rv(entry);
 
 	while (true) {
-		double pos_sgp4[3], pos_sgp4_mod[3];
-		double vel_sgp4[3], vel_sgp4_mod[3];
+		double pos_sgp4[3], pos_sgp4_mod[3], pos_sgp4_mod_near[3];
+		double vel_sgp4[3], vel_sgp4_mod[3], vel_sgp4_mod_near[3];
 
 		auto now = std::chrono::utc_clock::now();
 
@@ -92,11 +97,23 @@ int main() {
 		if (sgp4_mod_rec.error != 0) {
 			std::cerr << "SGP4_mod error " << sgp4_mod_rec.error << std::endl;
 		}
-		std::cout << "SGP4_mod: " << std::endl;
-		print_coords_from_pos(pos_sgp4_mod, now);
-		pos_sgp4[1] += 0.1f;
-		assert_d3(pos_sgp4, pos_sgp4_mod,
-			"SGP4 and SGP4_mod yield different positions");
+
+		const char* assert_msg =
+			"SGP4s yield different positions";
+		if (!assert_d3(pos_sgp4, pos_sgp4_mod, assert_msg)) {
+			std::cout << "SGP4_mod: " << std::endl;
+			print_coords_from_pos(pos_sgp4_mod, now);
+		}
+
+		SGP4Funcs_mod_near::sgp4(sgp4_near_rec, seconds_offset / 60.0, pos_sgp4_mod_near, vel_sgp4_mod_near);
+		if (sgp4_near_rec.error != 0) {
+			std::cerr << "SGP4_mod_near error " << sgp4_near_rec.error << std::endl;
+		}
+
+		if (!assert_d3(pos_sgp4, pos_sgp4_mod_near, assert_msg)) {
+			std::cout << "SGP4_near: " << std::endl;
+			print_coords_from_pos(pos_sgp4_mod_near, now);
+		}
 	
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 		std::cout << std::endl << std::endl;
