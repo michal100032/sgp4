@@ -7,5 +7,26 @@ The project still is under development, although time conversion utilites and TL
   
 If you have any suggestions or questions feel free to post an issue or email me.
 
+### Build
+First clone the repository
+```
+git clone git@github.com:michal100032/sgp4.git
+cd sgp4
+```
+Then, run cmake
+```
+cmake -B out/build
+```
+And finally build the project with make
+```
+cd out/build
+make
+```
+To run the test program just type
+```
+tests/sgp4_test
+```
+Alternatively to build the project you can simply open it in Visual Studio.
+
 ### Dependencies
 Currently none
