@@ -288,6 +288,7 @@ namespace SGP4Funcs_mod
 				qzms24 = qzms24temp * qzms24temp * qzms24temp * qzms24temp;
 				sfour = sfour / EARTH_RAD + 1.0;
 			}
+
 			pinvsq = 1.0 / posq;
 
 			tsi = 1.0 / (ao - sfour);

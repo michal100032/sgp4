@@ -12,7 +12,6 @@ namespace SGP4Funcs_mod_near {
 		char      satnum[6];
 		int       epochyr = 0, epochtynumrev = 0;
 		int       error = 0;
-		char      init = 0, method = 0;
 
 		/* Near Earth */
 		int    isimp;
