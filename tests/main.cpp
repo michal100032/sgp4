@@ -75,7 +75,7 @@ int main() {
 	SGP4Funcs_mod::elsetrec sgp4_mod_rec = 
 		SGP4Funcs_mod::twoline2rv(entry);
 
-	SGP4Funcs_mod_near::elsetrec sgp4_near_rec = SGP4Funcs_mod_near::twoline2rv(entry);
+	SGP4Funcs_mod_near::elsetrec sgp4_near_rec = SGP4Funcs_mod_near::sgp4init(entry);
 
 	while (true) {
 		double pos_sgp4[3], pos_sgp4_mod[3], pos_sgp4_mod_near[3];

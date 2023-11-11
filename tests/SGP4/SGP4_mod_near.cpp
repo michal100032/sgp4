@@ -34,6 +34,13 @@ static const double Q0_PARAM_DEF = 120.0 / EARTH_RAD + 1.0;
 
 namespace SGP4Funcs_mod_near
 {
+	static double get_julian_since_midnight(double julian) {
+		double julian_since_midnight = julian - trunc(julian) - 0.5f;
+		if (julian_since_midnight < 0.0)
+			julian_since_midnight += 1.0;
+		return julian_since_midnight;
+	}
+
 	static std::pair<double, double> find_org_sma_and_mean_mot(
 		double tle_mean_motion, double cos2_incl, double rt_one_min_ecc_pow2
 	) {
@@ -184,12 +191,33 @@ namespace SGP4Funcs_mod_near
 			15.0 * c1_pow2 * (2.0 * sat.d2 + c1_pow2));
 	}
 
-	bool sgp4init(elsetrec& sat) {
+	elsetrec sgp4init(const sgp4::tle_set& set) {
+		elsetrec sat;
+
+		double julian_epoch = sgp4::time_utils::to_julian(set.epoch);
+
+		sat.jdsatepoch = julian_epoch;
+		sat.jdsatepochF = get_julian_since_midnight(julian_epoch);
+
+		sat.no_kozai = set.mean_motion;
+		sat.ndot = set.d_mean_motion;
+		sat.nddot = set.dd_mean_motion;
+
+		sat.incl = set.inclination;
+		sat.nodeo = set.right_ascension;
+		sat.argpo = set.arg_of_perigee;
+		sat.mo = set.mean_anomaly;
+
+		sat.ecc = set.eccentricity;
+
+		sat.bstar = set.rad_press_coef;
+
+
 		double ecc_pow2 = sat.ecc * sat.ecc;
 
 		double one_min_ecc_pow2 = 1.0 - ecc_pow2;
 		double beta_0 = sqrt(one_min_ecc_pow2);
-		// put those in elsetrec?
+		// put these in elsetrec?
 		double cos_incl = cos(sat.incl);
 		double sin_incl = sin(sat.incl);
 		double cos2_incl = cos_incl * cos_incl;
@@ -219,7 +247,7 @@ namespace SGP4Funcs_mod_near
 		
 		calculate_t_coeffs(sat);
 		
-		return true;
+		return sat;
 	}
 
 	bool sgp4(elsetrec& sat, double tsince, double r[3], double v[3]) {
@@ -432,37 +460,5 @@ namespace SGP4Funcs_mod_near
 		}
 
 		return true;
-	}
-
-	elsetrec twoline2rv(const sgp4::tle_set& set)
-	{
-		elsetrec sat;
-
-		double julian_epoch = sgp4::time_utils::to_julian(set.epoch);
-		double julian_since_midnight = julian_epoch - trunc(julian_epoch) - 0.5f;
-		if (julian_since_midnight < 0.0)
-			julian_since_midnight += 1.0;
-
-		sat.jdsatepoch = julian_epoch;
-		sat.jdsatepochF = julian_since_midnight;
-
-
-		sat.no_kozai = set.mean_motion;
-		sat.ndot = set.d_mean_motion;
-		sat.nddot = set.dd_mean_motion;
-
-		sat.incl = set.inclination;
-		sat.nodeo = set.right_ascension;
-		sat.argpo = set.arg_of_perigee;
-		sat.mo = set.mean_anomaly;
-
-		sat.ecc = set.eccentricity;
-
-		sat.bstar = set.rad_press_coef;
-
-		// ---------------- initialize the orbit at sgp4epoch -------------------
-		sgp4init(sat);
-
-		return sat;
 	}
 }
