@@ -29,9 +29,9 @@ tests/sgp4_test
 Alternatively to build the project you can simply open it in Visual Studio.
 
 ### Sources
-Sources on which I based my code
+Sources that I base my code on
+* A series of tutorials on orbital propagation on Celestrak (http://celestrak.org/columns/)
 * Spacetrak Report no. 3 (https://celestrak.org/NORAD/documentation/spacetrk.pdf). This is where the SGP4 along with SDP4 (the deep space version) were described. Unfortunatelly the algorithm for generating the TLEs has been modified over the years and thus the original algorithms are not entirely valid anymore. The report contains FORTRAN implementation of the algorithms.
-* Revisiting Spacetrack Report no. 3 (http://celestrak.org/publications/AIAA/2006-6753/). This is an update of the algorithms. There is also a C++ implementation last updated in 2020.
-
+* Revisiting Spacetrack Report no. 3 (http://celestrak.org/publications/AIAA/2006-6753/). This is an update of the algorithms. There is also a C++ implementation last updated in 202 
 ### Dependencies
 Currently none
