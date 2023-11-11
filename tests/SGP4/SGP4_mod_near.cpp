@@ -34,7 +34,7 @@ static const double Q0_PARAM_DEF = 120.0 / EARTH_RAD + 1.0;
 
 namespace SGP4Funcs_mod_near
 {
-	std::pair<double, double> find_org_sma_and_mean_mot(
+	static std::pair<double, double> find_org_sma_and_mean_mot(
 		double tle_mean_motion, double cos2_incl, double rt_one_min_ecc_pow2
 	) {
 		double a_1 = pow(X_KE / tle_mean_motion, 2.0 / 3.0);
@@ -53,155 +53,172 @@ namespace SGP4Funcs_mod_near
 
 		return std::make_pair(sma, mean_motion);
 	}
-
-	bool sgp4init(elsetrec& sat)
-	{
-		double epoch_1950 = sat.jdsatepoch + sat.jdsatepochF - 2433281.5;
-		/* --------------------- local variables ------------------------ */
-		double cosim, sinim, sinomm, cc1sq,
-			dndt, temp, temp1, temp2, temp3, xpidot,
-			xhdot1, r[3], v[3], delmotemp;
-
-		double ecc_pow2 = sat.ecco * sat.ecco;
-		double one_min_ecc_pow2 = 1.0 - ecc_pow2;
-		double rt_one_min_ecc_pow2 = sqrt(one_min_ecc_pow2);
-		double cos_incl = cos(sat.inclo);
-		double sin_incl = sin(sat.inclo);
-		double cos2_incl = cos_incl * cos_incl;
-
-		double one_min_5_cos2_incl = 1.0 - 5.0 * cos2_incl;
-		
-		sat.con41 = -one_min_5_cos2_incl - 2 * cos2_incl;
-
-		auto [sma, mean_motion] = find_org_sma_and_mean_mot(sat.no_kozai, cos2_incl, rt_one_min_ecc_pow2);
-		sat.no_unkozai = mean_motion;
-		sat.a = sma;
-
-		// why?
-		double posq = sma * one_min_ecc_pow2 * sma * one_min_ecc_pow2;
-
-		// a, alta and altp are in the unitis of earths radii
-		sat.a = pow(sat.no_unkozai * TUMIN, (-2.0 / 3.0));
-		sat.alta = sat.a * (1.0 + sat.ecco) - 1.0;
-		sat.altp = sat.a * (1.0 - sat.ecco) - 1.0;
-
-		if (sat.ecco < 0.0 || sat.no_unkozai < 0.0) {
-			std::cerr << "There seems to be some error" << std::endl;
-			return false;
-		}
-
-		// no idea what it does
-		double perigee = sat.altp * EARTH_RAD;
-		
-		sat.isimp = 0;
-		if (perigee < 220.0)
-			sat.isimp = 1;
-
-			
-		// adjust the s constant
+	// perigee in km
+	static double get_s_constant(double perigee) {
 		double s_const;
 		if (perigee >= 156.0)
 			s_const = S_PARAM_DEF;
 		else if (perigee < 98.0)
 			s_const = 20.0 / EARTH_RAD + 1.0;
 		else
-			s_const = sat.a * (1 - sat.ecco) - S_PARAM_DEF + 1.0;
+			s_const = perigee / EARTH_RAD - S_PARAM_DEF + 2.0;
 
+		return s_const;
+	}
+	
+	static void calculate_c_coeffs(elsetrec& sat, double s_const) {
 		double q0_min_s = Q0_PARAM_DEF - s_const;
 		double q0_min_s_pow4 = q0_min_s * q0_min_s * q0_min_s * q0_min_s;
 
-		// page 11 of the report
-		double tsi = 1.0 / (sat.a - s_const);
-		
-		sat.eta = sat.a * sat.ecco * tsi;
 		double eta_pow2 = sat.eta * sat.eta;
-		double ecc_eta = sat.ecco * sat.eta;
+		double ecc_eta = sat.ecc * sat.eta;
 
-		double psisq = fabs(1.0 - eta_pow2);
-		double coef = q0_min_s_pow4 * pow(tsi, 4.0);
-		double coef1 = coef / pow(psisq, 3.5);
-		
-		double cc2 = coef1 * sat.no_unkozai * (sat.a * (1.0 + 1.5 * eta_pow2 + ecc_eta *
-			(4.0 + eta_pow2)) + 0.375 * EARTH_J2 * tsi / psisq * sat.con41 *
+		double q0_min_s_tsi_pow4 = q0_min_s_pow4 * sat.tsi * sat.tsi * sat.tsi * sat.tsi;
+
+		sat.c_coef_common = q0_min_s_tsi_pow4 / pow(1.0 - eta_pow2, 3.5);
+
+		double sin_incl = sin(sat.incl);
+		double cos_incl = cos(sat.incl);
+		double three_cos2_incl_min_1 = 3 * cos_incl * cos_incl - 1.0;
+
+		sat.c2 = sat.c_coef_common * sat.no_unkozai * (sat.a * (1.0 + 1.5 * eta_pow2 + ecc_eta *
+			(4.0 + eta_pow2)) + 0.375 * EARTH_J2 * sat.tsi / (1.0 - eta_pow2) * three_cos2_incl_min_1 *
 			(8.0 + 3.0 * eta_pow2 * (8.0 + eta_pow2)));
 
-		sat.cc1 = sat.bstar * cc2;
-		double cc3 = 0.0;
-		if (sat.ecco > 1.0e-4)
-			cc3 = -2.0 * coef * tsi * EARTH_J3_TO_J2 * sat.no_unkozai
-			* sin_incl / sat.ecco;
-		
-		sat.x1mth2 = 1.0 - cos2_incl;
-		sat.cc4 = 2.0 * sat.no_unkozai * coef1 * sat.a * one_min_ecc_pow2 *
-			(sat.eta * (2.0 + 0.5 * eta_pow2) + sat.ecco *
-				(0.5 + 2.0 * eta_pow2) - EARTH_J2 * tsi / (sat.a * psisq) *
-				(-3.0 * sat.con41 * (1.0 - 2.0 * ecc_eta + eta_pow2 *
-					(1.5 - 0.5 * ecc_eta)) + 0.75 * sat.x1mth2 *
+		sat.c1 = sat.bstar * sat.c2;
+
+		sat.c3 = 0.0;
+		if (sat.ecc > 1.0e-4)
+			sat.c3 = -2.0 * sat.c_coef_common * sat.tsi * EARTH_J3_TO_J2 * sat.no_unkozai
+			* sin_incl / sat.ecc;
+
+		double one_min_ecc_pow2 = 1.0 - sat.ecc * sat.ecc;
+		sat.c4 = 2.0 * sat.no_unkozai * sat.c_coef_common * sat.a * one_min_ecc_pow2 *
+			(sat.eta * (2.0 + 0.5 * eta_pow2) + sat.ecc *
+				(0.5 + 2.0 * eta_pow2) - EARTH_J2 * sat.tsi / (sat.a * (1.0 - eta_pow2)) *
+				(-3.0 * three_cos2_incl_min_1 * (1.0 - 2.0 * ecc_eta + eta_pow2 *
+					(1.5 - 0.5 * ecc_eta)) + 0.75 * (1.0 - cos_incl * cos_incl) *
 					(2.0 * eta_pow2 - ecc_eta * (1.0 + eta_pow2)) * cos(2.0 * sat.argpo)));
-		
-		sat.cc5 = 2.0 * coef1 * sat.a * one_min_ecc_pow2 * (1.0 + 2.75 *
+
+		sat.c5 = 2.0 * sat.c_coef_common * sat.a * one_min_ecc_pow2 * (1.0 + 2.75 *
 			(eta_pow2 + ecc_eta) + ecc_eta * eta_pow2);
+	}
+
+	static double get_pre_L_coeff(elsetrec& sat) {
+		double cos_incl = cos(sat.incl);
+		double sin_incl = sin(sat.incl);
+
+		const double num_very_close_to_0 = 1.5e-12;
+
+		if (fabs(cos_incl + 1.0) > num_very_close_to_0)
+			return -0.25 * EARTH_J3_TO_J2 * sin_incl * (3.0 + 5.0 * cos_incl) / (1.0 + cos_incl);
 		
+		return -0.25 * EARTH_J3_TO_J2 * sin_incl * (3.0 + 5.0 * cos_incl) / num_very_close_to_0;
+	}
+
+	static void calculate_angle_coeffs(elsetrec& sat) {
+		double cos_incl = cos(sat.incl);
+		double cos2_incl = cos_incl * cos_incl;
 		double cos4_incl = cos2_incl * cos2_incl;
-		temp1 = 1.5 * EARTH_J2 / posq * sat.no_unkozai;
-		temp2 = 0.5 * temp1 * EARTH_J2 / posq;
-		temp3 = -0.46875 * EARTH_J4 / posq / posq * sat.no_unkozai;
-		
-		sat.mdot = sat.no_unkozai + 0.5 * temp1 * rt_one_min_ecc_pow2 * sat.con41
-			+ 0.0625 * temp2 * rt_one_min_ecc_pow2
+
+		double one_min_ecc_pow2 = 1.0 - sat.ecc * sat.ecc;
+		double beta_0 = sqrt(one_min_ecc_pow2);
+
+		double posq = sat.a * one_min_ecc_pow2 * sat.a * one_min_ecc_pow2;
+		double temp1 = 1.5 * EARTH_J2 / posq * sat.no_unkozai;
+		double temp2 = 0.5 * temp1 * EARTH_J2 / posq;
+		double temp3 = -0.46875 * EARTH_J4 / posq / posq * sat.no_unkozai;
+
+		// M_DF without (t - t_0)
+		sat.mdot = sat.no_unkozai + 0.5 * temp1 * beta_0 * (3 * cos2_incl - 1.0)
+			+ 0.0625 * temp2 * beta_0
 			* (13.0 - 78.0 * cos2_incl + 137.0 * cos4_incl);
-		
-		sat.argpdot = -0.5 * temp1 * one_min_5_cos2_incl + 0.0625 * temp2 *
+
+		// (small) omega_DF
+		sat.argpdot = -0.5 * temp1 * (1.0 - 5.0 * cos2_incl) + 0.0625 * temp2 *
 			(7.0 - 114.0 * cos2_incl + 395.0 * cos4_incl) +
 			temp3 * (3.0 - 36.0 * cos2_incl + 49.0 * cos4_incl);
-		
-		xhdot1 = -temp1 * cos_incl;
+
+
+		double xhdot1 = -temp1 * cos_incl;
+		// page 12
+		// (capital) omega_DF
 		sat.nodedot = xhdot1 + (0.5 * temp2 * (4.0 - 19.0 * cos2_incl) +
 			2.0 * temp3 * (3.0 - 7.0 * cos2_incl)) * cos_incl;
 
-		xpidot = sat.argpdot + sat.nodedot;
-		sat.omgcof = sat.bstar * cc3 * cos(sat.argpo);
+		// delta small omega (again without t - t_0)
+		sat.omgcof = sat.bstar * sat.c3 * cos(sat.argpo);
+
+		// delta M without a lot of terms
+		double ecc_eta = sat.ecc * sat.eta;
 		sat.xmcof = 0.0;
-		
-		if (sat.ecco > 1.0e-4)
-			sat.xmcof = -2.0 / 3.0 * coef * sat.bstar / ecc_eta;
-		sat.nodecf = 3.5 * one_min_ecc_pow2 * xhdot1 * sat.cc1;
-		sat.t2cof = 1.5 * sat.cc1;
+		if (sat.ecc > 1.0e-4)
+			sat.xmcof = -2.0 / 3.0 * sat.c_coef_common * sat.bstar / ecc_eta;
 
-		const double num_very_close_to_0 = 1.5e-12;
-		if (fabs(cos_incl + 1.0) > num_very_close_to_0)
-			sat.xlcof = -0.25 * EARTH_J3_TO_J2 * sin_incl * (3.0 + 5.0 * cos_incl) / (1.0 + cos_incl);
-		else
-			sat.xlcof = -0.25 * EARTH_J3_TO_J2 * sin_incl * (3.0 + 5.0 * cos_incl) / num_very_close_to_0;
-		
-		sat.aycof = -0.5 * EARTH_J3_TO_J2 * sin_incl;
+		// this might be the capital omega (without t - t_0) and omega_DF
+		sat.nodecf = 3.5 * one_min_ecc_pow2 * xhdot1 * sat.c1;
+	}
 
-		delmotemp = 1.0 + sat.eta * cos(sat.mo);
+	static void calculate_d_coeffs(elsetrec& sat, double s_const) {
+		double c1_pow2 = sat.c1 * sat.c1;
+		sat.d2 = 4.0 * sat.a * sat.tsi * c1_pow2;
 
-		sat.delmo = delmotemp * delmotemp * delmotemp;
-		sat.sinmao = sin(sat.mo);
-		sat.x7thm1 = 7.0 * cos2_incl - 1.0;
+		double d3_d4_common = sat.d2 * sat.tsi * sat.c1 / 3.0;
 
-		cc1sq = sat.cc1 * sat.cc1;
-		sat.d2 = 4.0 * sat.a * tsi * cc1sq;
-		
-		temp = sat.d2 * tsi * sat.cc1 / 3.0;
-		
-		sat.d3 = (17.0 * sat.a + s_const) * temp;
-		sat.d4 = 0.5 * temp * sat.a * tsi * (221.0 * sat.a + 31.0 * s_const) *
-			sat.cc1;
-		
-		sat.t3cof = sat.d2 + 2.0 * cc1sq;
-		sat.t4cof = 0.25 * (3.0 * sat.d3 + sat.cc1 *
-			(12.0 * sat.d2 + 10.0 * cc1sq));
+		sat.d3 = (17.0 * sat.a + s_const) * d3_d4_common;
+		sat.d4 = 0.5 * d3_d4_common * sat.a * sat.tsi * (221.0 * sat.a + 31.0 * s_const) * sat.c1;
+	}
 
-		sat.t5cof = 0.2 * (3.0 * sat.d4 +
-			12.0 * sat.cc1 * sat.d3 +
+	static void calculate_t_coeffs(elsetrec& sat) {
+		double c1_pow2 = sat.c1 * sat.c1;
+		sat.t2 = 1.5 * sat.c1;
+		
+		sat.t3 = sat.d2 + 2.0 * c1_pow2;
+
+		sat.t4 = 0.25 * (3.0 * sat.d3 + sat.c1 *
+			(12.0 * sat.d2 + 10.0 * c1_pow2));
+
+		sat.t5 = 0.2 * (3.0 * sat.d4 +
+			12.0 * sat.c1 * sat.d3 +
 			6.0 * sat.d2 * sat.d2 +
-			15.0 * cc1sq * (2.0 * sat.d2 + cc1sq));
+			15.0 * c1_pow2 * (2.0 * sat.d2 + c1_pow2));
+	}
 
-		sgp4(sat, 0.0, r, v);
+	bool sgp4init(elsetrec& sat) {
+		double ecc_pow2 = sat.ecc * sat.ecc;
 
+		double one_min_ecc_pow2 = 1.0 - ecc_pow2;
+		double beta_0 = sqrt(one_min_ecc_pow2);
+		// put those in elsetrec?
+		double cos_incl = cos(sat.incl);
+		double sin_incl = sin(sat.incl);
+		double cos2_incl = cos_incl * cos_incl;
+
+		auto [sma, mean_motion] = find_org_sma_and_mean_mot(sat.no_kozai, cos2_incl, beta_0);
+		sat.no_unkozai = mean_motion;
+		sat.a = sma;
+
+		double perigee = (sat.a * (1.0 - sat.ecc) - 1.0) * EARTH_RAD;
+
+		double s_const = get_s_constant(perigee);
+		
+		sat.tsi = 1.0 / (sat.a - s_const);
+		sat.eta = sat.a * sat.ecc * sat.tsi;
+
+		calculate_c_coeffs(sat, s_const);
+
+		calculate_angle_coeffs(sat);
+				
+		sat.xlcof = get_pre_L_coeff(sat);
+
+		double one_p_eta_cos_mo = 1.0 + sat.eta * cos(sat.mo);
+		sat.delmo = one_p_eta_cos_mo * one_p_eta_cos_mo * one_p_eta_cos_mo;
+		sat.sinmao = sin(sat.mo);
+
+		calculate_d_coeffs(sat, s_const);
+		
+		calculate_t_coeffs(sat);
+		
 		return true;
 	}
 
@@ -217,13 +234,11 @@ namespace SGP4Funcs_mod_near
 			uy, uz, vx, vy, vz, inclm, mm,
 			nm, nodem, xinc, xincp, xl, xlm, mp,
 			xmdf, xmx, xmy, nodedf, xnode, nodep, tc, dndt, vkmpersec, delmtemp;
-		int ktr;
 
 		/* ------------------ set mathematical constants --------------- */
 		// sgp4fix divisor for divide by zero check on inclination
 		// the old check used 1.0 + cos(PI-1.0e-9), but then compared it to
 		// 1.5 e-12, so the threshold was changed to 1.5e-12 for consistency
-		const double temp4 = 1.5e-12;
 		// sgp4fix identify constants and allow alternate values
 		// getgravconst( whichconst, tumin, mu, radiusearthkm, xke, j2, j3, j4, j3oj2 );
 		vkmpersec = EARTH_J2 * X_KE / 60.0;
@@ -238,14 +253,14 @@ namespace SGP4Funcs_mod_near
 		mm = xmdf;
 		t2 = sat.t * sat.t;
 		nodem = nodedf + sat.nodecf * t2;
-		tempa = 1.0 - sat.cc1 * sat.t;
-		tempe = sat.bstar * sat.cc4 * sat.t;
-		templ = sat.t2cof * t2;
+		tempa = 1.0 - sat.c1 * sat.t;
+		tempe = sat.bstar * sat.c4 * sat.t;
+		templ = sat.t2 * t2;
 
-		if (sat.isimp != 1)
-		{
+		double perigee = (sat.a * (1.0 - sat.ecc) - 1.0) * EARTH_RAD;
+		if (perigee > 220.0) {
 			delomg = sat.omgcof * sat.t;
-			// sgp4fix use mutliply for speed instead of pow
+
 			delmtemp = 1.0 + sat.eta * cos(xmdf);
 			delm = sat.xmcof *
 				(delmtemp * delmtemp * delmtemp -
@@ -257,15 +272,15 @@ namespace SGP4Funcs_mod_near
 			t4 = t3 * sat.t;
 			tempa = tempa - sat.d2 * t2 - sat.d3 * t3 -
 				sat.d4 * t4;
-			tempe = tempe + sat.bstar * sat.cc5 * (sin(mm) -
+			tempe = tempe + sat.bstar * sat.c5 * (sin(mm) -
 				sat.sinmao);
-			templ = templ + sat.t3cof * t3 + t4 * (sat.t4cof +
-				sat.t * sat.t5cof);
+			templ = templ + sat.t3 * t3 + t4 * (sat.t4 +
+				sat.t * sat.t5);
 		}
 
 		nm = sat.no_unkozai;
-		em = sat.ecco;
-		inclm = sat.inclo;
+		em = sat.ecc;
+		inclm = sat.incl;
 
 		if (nm <= 0.0) {
 			sat.error = 2;
@@ -278,7 +293,7 @@ namespace SGP4Funcs_mod_near
 
 		// fix tolerance for error recognition
 		// sgp4fix am is fixed from the previous nm check
-		if ((em >= 1.0) || (em < -0.001)/* || (am < 0.95)*/) {
+		if (em >= 1.0 || em < -0.001/* || (am < 0.95)*/) {
 			sat.error = 1;
 			return false;
 		}
@@ -322,26 +337,29 @@ namespace SGP4Funcs_mod_near
 		/* -------------------- long period periodics ------------------ */
 		axnl = ep * cos(argpp);
 		temp = 1.0 / (am * (1.0 - ep * ep));
-		aynl = ep * sin(argpp) + temp * sat.aycof;
+		aynl = ep * sin(argpp) + temp * -0.5 * EARTH_J3_TO_J2 * sin(sat.incl);
 		xl = mp + argpp + nodep + temp * sat.xlcof * axnl;
 
 		/* --------------------- solve kepler's equation --------------- */
 		u = fmod(xl - nodep, TWO_PI);
 		eo1 = u;
 		tem5 = 9999.9;
-		ktr = 1;
 		//   sgp4fix for kepler iteration
 		//   the following iteration needs better limits on corrections
-		while ((fabs(tem5) >= 1.0e-12) && (ktr <= 10))
-		{
+		
+		// TODO: move somewhere else
+		const int MAX_KEPLER_ITERATIONS = 10; 
+		for (int i = 0; i < 10 && fabs(tem5) >= 1.0e-12; i++) {
 			sineo1 = sin(eo1);
 			coseo1 = cos(eo1);
+			
 			tem5 = 1.0 - coseo1 * axnl - sineo1 * aynl;
 			tem5 = (u - aynl * coseo1 + axnl * sineo1 - eo1) / tem5;
+
 			if (fabs(tem5) >= 0.95)
 				tem5 = tem5 > 0.0 ? 0.95 : -0.95;
+			
 			eo1 = eo1 + tem5;
-			ktr = ktr + 1;
 		}
 
 		/* ------------- short period preliminary quantities ----------- */
@@ -349,8 +367,8 @@ namespace SGP4Funcs_mod_near
 		esine = axnl * sineo1 - aynl * coseo1;
 		el2 = axnl * axnl + aynl * aynl;
 		pl = am * (1.0 - el2);
-		if (pl < 0.0)
-		{
+		
+		if (pl < 0.0) {
 			sat.error = 4;
 			return false;
 		}
@@ -369,14 +387,18 @@ namespace SGP4Funcs_mod_near
 		temp1 = 0.5 * EARTH_J2 * temp;
 		temp2 = temp1 * temp;
 
-		mrt = rl * (1.0 - 1.5 * temp2 * betal * sat.con41) +
-			0.5 * temp1 * sat.x1mth2 * cos2u;
-		su = su - 0.25 * temp2 * sat.x7thm1 * sin2u;
+		double cos_incl = cos(sat.incl);
+		double cos2_incl = cos_incl * cos_incl;
+		double three_cos2_incl_min_1 = 3 * cos2_incl - 1.0;
+		
+		mrt = rl * (1.0 - 1.5 * temp2 * betal * three_cos2_incl_min_1) +
+			0.5 * temp1 * (1.0 - cos2_incl) * cos2u;
+		su = su - 0.25 * temp2 * (7.0 * cos2_incl - 1.0) * sin2u;
 		xnode = nodep + 1.5 * temp2 * cosip * sin2u;
 		xinc = xincp + 1.5 * temp2 * cosip * sinip * cos2u;
-		mvt = rdotl - nm * temp1 * sat.x1mth2 * sin2u / X_KE;
-		rvdot = rvdotl + nm * temp1 * (sat.x1mth2 * cos2u +
-			1.5 * sat.con41) / X_KE;
+		mvt = rdotl - nm * temp1 * (1.0 - cos2_incl) * sin2u / X_KE;
+		rvdot = rvdotl + nm * temp1 * ((1.0 - cos2_incl) * cos2u +
+			1.5 * three_cos2_incl_min_1) / X_KE;
 
 		/* --------------------- orientation vectors ------------------- */
 		sinsu = sin(su);
@@ -416,20 +438,6 @@ namespace SGP4Funcs_mod_near
 	{
 		elsetrec sat;
 
-		sat.classification = set.classification == sgp4::tle_set::classification_type::classified ? 'C' : (
-			set.classification == sgp4::tle_set::classification_type::secret ? 'S' : 'U'
-		);
-
-		strcpy(sat.intldesg, (
-			std::to_string(set.int_designator.year)
-			+ std::to_string(set.int_designator.launch_number)
-			+ std::string(set.int_designator.piece)).c_str()
-		);
-		sat.elnum = set.set_num;
-
-		strcpy(sat.satnum, std::to_string(set.catalog_number).c_str());
-		sat.revnum = set.rev_num;
-
 		double julian_epoch = sgp4::time_utils::to_julian(set.epoch);
 		double julian_since_midnight = julian_epoch - trunc(julian_epoch) - 0.5f;
 		if (julian_since_midnight < 0.0)
@@ -443,19 +451,14 @@ namespace SGP4Funcs_mod_near
 		sat.ndot = set.d_mean_motion;
 		sat.nddot = set.dd_mean_motion;
 
-		sat.inclo = set.inclination;
+		sat.incl = set.inclination;
 		sat.nodeo = set.right_ascension;
 		sat.argpo = set.arg_of_perigee;
 		sat.mo = set.mean_anomaly;
 
-		sat.ecco = set.eccentricity;
+		sat.ecc = set.eccentricity;
 
 		sat.bstar = set.rad_press_coef;
-
-		// ------------ perform complete catalog evaluation, -+ 1 day -----------  why??
-		double startmfe = -1440.0;
-		double stopmfe = 1440.0;
-		double deltamin = 10.0;
 
 		// ---------------- initialize the orbit at sgp4epoch -------------------
 		sgp4init(sat);
