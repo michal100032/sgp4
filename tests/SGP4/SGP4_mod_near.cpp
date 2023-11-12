@@ -212,7 +212,6 @@ namespace SGP4Funcs_mod_near
 
 		sat.bstar = set.rad_press_coef;
 
-
 		double ecc_pow2 = sat.ecc * sat.ecc;
 
 		double one_min_ecc_pow2 = 1.0 - ecc_pow2;
@@ -237,7 +236,7 @@ namespace SGP4Funcs_mod_near
 
 		calculate_angle_coeffs(sat);
 				
-		sat.xlcof = get_pre_L_coeff(sat);
+		sat.pre_L_coeff = get_pre_L_coeff(sat);
 
 		double one_p_eta_cos_mo = 1.0 + sat.eta * cos(sat.mo);
 		sat.delmo = one_p_eta_cos_mo * one_p_eta_cos_mo * one_p_eta_cos_mo;
@@ -251,17 +250,17 @@ namespace SGP4Funcs_mod_near
 	}
 
 	bool sgp4(elsetrec& sat, double tsince, double r[3], double v[3]) {
-		double am, axnl, aynl, betal, cosim, cnod,
-			cos2u, coseo1, cosi, cosip, cosisq, cossu, cosu,
-			delm, delomg, em, emsq, ecose, el2, eo1,
-			ep, esine, argpm, argpp, argpdf, pl, mrt = 0.0,
-			mvt, rdotl, rl, rvdot, rvdotl, sinim,
-			sin2u, sineo1, sini, sinip, sinsu, sinu,
-			snod, su, t2, t3, t4, tem5, temp,
-			temp1, temp2, tempa, tempe, templ, u, ux,
-			uy, uz, vx, vy, vz, inclm, mm,
-			nm, nodem, xinc, xincp, xl, xlm, mp,
-			xmdf, xmx, xmy, nodedf, xnode, nodep, tc, dndt, vkmpersec, delmtemp;
+		double am, axnl, aynl, betal, cnod,
+			cos2u, coseo1, cosi, cosisq, cossu, cosu,
+			delm, delomg, emsq, ecose, el2, eo1,
+			em, esine, pl, mrt = 0.0,
+			mvt, rdotl, rl, rvdot, rvdotl,
+			sin2u, sineo1, sini, sinsu, sinu,
+			snod, su, tem5, temp,
+			temp1, temp2, u, ux,
+			uy, uz, vx, vy, vz,
+			nm, xinc, xl, xlm, 
+			xmx, xmy, xnode, tc, dndt, delmtemp;
 
 		/* ------------------ set mathematical constants --------------- */
 		// sgp4fix divisor for divide by zero check on inclination
@@ -269,54 +268,72 @@ namespace SGP4Funcs_mod_near
 		// 1.5 e-12, so the threshold was changed to 1.5e-12 for consistency
 		// sgp4fix identify constants and allow alternate values
 		// getgravconst( whichconst, tumin, mu, radiusearthkm, xke, j2, j3, j4, j3oj2 );
-		vkmpersec = EARTH_J2 * X_KE / 60.0;
-
-		sat.t = tsince;
+		const double vkmpersec = EARTH_J2 * X_KE / 60.0;
 
 		/* ------- update for secular gravity and atmospheric drag ----- */
-		xmdf = sat.mo + sat.mdot * sat.t;
-		argpdf = sat.argpo + sat.argpdot * sat.t;
-		nodedf = sat.nodeo + sat.nodedot * sat.t;
-		argpm = argpdf;
-		mm = xmdf;
-		t2 = sat.t * sat.t;
-		nodem = nodedf + sat.nodecf * t2;
-		tempa = 1.0 - sat.c1 * sat.t;
-		tempe = sat.bstar * sat.c4 * sat.t;
-		templ = sat.t2 * t2;
+		// M_DF
+		double mdf = sat.mo + sat.mdot * tsince;
+		// arg_DF
+		double argpdf = sat.argpo + sat.argpdot * tsince;
+		// right_ascencion_DF
+		double nodedf = sat.nodeo + sat.nodedot * tsince;
+		// 
+		
+
+		// small omega (for perigee lower than 220)
+		double argpm = argpdf;
+		
+		// M  (for perigee lower than 220)
+		double mm = mdf;
+		
+		double t_pow2 = tsince * tsince;
+		// capital omega
+		double nodem = nodedf + sat.nodecf * t_pow2;
+		
+		
+		
+		double tempa = 1.0 - sat.c1 * tsince;
+		double tempe = sat.bstar * sat.c4 * tsince;
+		double templ = sat.t2 * t_pow2;
 
 		double perigee = (sat.a * (1.0 - sat.ecc) - 1.0) * EARTH_RAD;
 		if (perigee > 220.0) {
-			delomg = sat.omgcof * sat.t;
+			delomg = sat.omgcof * tsince;
 
-			delmtemp = 1.0 + sat.eta * cos(xmdf);
+			delmtemp = 1.0 + sat.eta * cos(mdf);
 			delm = sat.xmcof *
 				(delmtemp * delmtemp * delmtemp -
 					sat.delmo);
 			temp = delomg + delm;
-			mm = xmdf + temp;
+			mm = mdf + temp;
 			argpm = argpdf - temp;
-			t3 = t2 * sat.t;
-			t4 = t3 * sat.t;
-			tempa = tempa - sat.d2 * t2 - sat.d3 * t3 -
-				sat.d4 * t4;
+			double t_pow3 = t_pow2 * tsince;
+			double t_pow4 = t_pow3 * tsince;
+
+			tempa = tempa - sat.d2 * t_pow2 - sat.d3 * t_pow3 -
+				sat.d4 * t_pow4;
 			tempe = tempe + sat.bstar * sat.c5 * (sin(mm) -
 				sat.sinmao);
-			templ = templ + sat.t3 * t3 + t4 * (sat.t4 +
-				sat.t * sat.t5);
+			templ = templ + sat.t3 * t_pow3 + t_pow4 * (sat.t4 +
+				tsince * sat.t5);
 		}
 
 		nm = sat.no_unkozai;
 		em = sat.ecc;
-		inclm = sat.incl;
 
+		// move it somewhere
 		if (nm <= 0.0) {
 			sat.error = 2;
 			return false;
 		}
 
-		am = pow((X_KE / nm), 2.0 / 3.0) * tempa * tempa;
+		// a
+		am = sat.a * tempa * tempa;
+		
+		// n
 		nm = X_KE / pow(am, 1.5);
+
+		// e
 		em = em - tempe;
 
 		// fix tolerance for error recognition
@@ -340,36 +357,17 @@ namespace SGP4Funcs_mod_near
 		xlm = fmod(xlm, TWO_PI);
 		mm = fmod(xlm - argpm - nodem, TWO_PI);
 
-		// sgp4fix recover singly averaged mean elements
-		sat.am = am;
-		sat.em = em;
-		sat.im = inclm;
-		sat.Om = nodem;
-		sat.om = argpm;
-		sat.mm = mm;
-		sat.nm = nm;
-
-		/* ----------------- compute extra mean quantities ------------- */
-		sinim = sin(inclm);
-		cosim = cos(inclm);
-
-		/* -------------------- add lunar-solar periodics -------------- */
-		ep = em;
-		xincp = inclm;
-		argpp = argpm;
-		nodep = nodem;
-		mp = mm;
-		sinip = sinim;
-		cosip = cosim;
+		double sin_incl = sin(sat.incl);
+		double cos_incl = cos(sat.incl);
 
 		/* -------------------- long period periodics ------------------ */
-		axnl = ep * cos(argpp);
-		temp = 1.0 / (am * (1.0 - ep * ep));
-		aynl = ep * sin(argpp) + temp * -0.5 * EARTH_J3_TO_J2 * sin(sat.incl);
-		xl = mp + argpp + nodep + temp * sat.xlcof * axnl;
+		axnl = em * cos(argpm);
+		temp = 1.0 / (am * (1.0 - em * em));
+		aynl = em * sin(argpm) + temp * -0.5 * EARTH_J3_TO_J2 * sin_incl;
+		xl = mm + argpm + nodem + temp * sat.pre_L_coeff * axnl;
 
 		/* --------------------- solve kepler's equation --------------- */
-		u = fmod(xl - nodep, TWO_PI);
+		u = fmod(xl - nodem, TWO_PI);
 		eo1 = u;
 		tem5 = 9999.9;
 		//   sgp4fix for kepler iteration
@@ -409,21 +407,20 @@ namespace SGP4Funcs_mod_near
 		sinu = am / rl * (sineo1 - aynl - axnl * temp);
 		cosu = am / rl * (coseo1 - axnl + aynl * temp);
 		su = atan2(sinu, cosu);
-		sin2u = (cosu + cosu) * sinu;
+		sin2u =  2 * cosu * sinu;
 		cos2u = 1.0 - 2.0 * sinu * sinu;
 		temp = 1.0 / pl;
 		temp1 = 0.5 * EARTH_J2 * temp;
 		temp2 = temp1 * temp;
 
-		double cos_incl = cos(sat.incl);
 		double cos2_incl = cos_incl * cos_incl;
 		double three_cos2_incl_min_1 = 3 * cos2_incl - 1.0;
 		
 		mrt = rl * (1.0 - 1.5 * temp2 * betal * three_cos2_incl_min_1) +
 			0.5 * temp1 * (1.0 - cos2_incl) * cos2u;
 		su = su - 0.25 * temp2 * (7.0 * cos2_incl - 1.0) * sin2u;
-		xnode = nodep + 1.5 * temp2 * cosip * sin2u;
-		xinc = xincp + 1.5 * temp2 * cosip * sinip * cos2u;
+		xnode = nodem + 1.5 * temp2 * cos_incl * sin2u;
+		xinc = sat.incl + 1.5 * temp2 * cos_incl * sin_incl * cos2u;
 		mvt = rdotl - nm * temp1 * (1.0 - cos2_incl) * sin2u / X_KE;
 		rvdot = rvdotl + nm * temp1 * ((1.0 - cos2_incl) * cos2u +
 			1.5 * three_cos2_incl_min_1) / X_KE;

@@ -13,7 +13,8 @@ add_library(
     src/tle.cpp
     src/vec3.cpp
     src/coords.cpp
- "src/propagation.cpp")
+    src/propagation.cpp
+)
 
 target_include_directories(sgp4
     PUBLIC

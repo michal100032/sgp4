@@ -20,8 +20,8 @@ namespace SGP4Funcs_mod_near {
 		
 		// coefficients that can be precalculated
 		// rename!
-		double	delmo = 0.0, eta = 0.0, tsi = 0.0, argpdot = 0.0, omgcof = 0.0, sinmao = 0.0, t = 0.0, 
-			mdot = 0.0, nodedot = 0.0, xlcof = 0.0, xmcof = 0.0, nodecf = 0;
+		double	delmo = 0.0, eta = 0.0, tsi = 0.0, argpdot = 0.0, omgcof = 0.0, sinmao = 0.0, 
+			mdot = 0.0, nodedot = 0.0, pre_L_coeff = 0.0, xmcof = 0.0, nodecf = 0;
 
 		//
 		// from TLE: 
@@ -46,10 +46,6 @@ namespace SGP4Funcs_mod_near {
 
 		// rename!
 		double no_unkozai = 0.0;
-
-		// rename / remove!
-		// sgp4fix add singly averaged variables
-		double am = 0.0, em = 0.0, im = 0.0, Om = 0.0, om = 0.0, mm = 0.0, nm = 0.0;
 	};
 
 	elsetrec sgp4init(const sgp4::tle_set& set);
