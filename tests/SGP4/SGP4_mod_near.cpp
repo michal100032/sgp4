@@ -3,6 +3,7 @@
 #include <iostream>
 #include <iomanip>
 #include <utility>
+#include <tuple>
 
 static const double PI = 3.14159265358979323846;
 static const double TWO_PI = 2 * PI;
@@ -137,7 +138,7 @@ namespace SGP4Funcs_mod_near
 		double temp3 = -0.46875 * EARTH_J4 / posq / posq * sat.no_unkozai;
 
 		// M_DF without (t - t_0)
-		sat.mdot = sat.no_unkozai + 0.5 * temp1 * beta_0 * (3 * cos2_incl - 1.0)
+		sat.mean_mot_dot = sat.no_unkozai + 0.5 * temp1 * beta_0 * (3 * cos2_incl - 1.0)
 			+ 0.0625 * temp2 * beta_0
 			* (13.0 - 78.0 * cos2_incl + 137.0 * cos4_incl);
 
@@ -150,7 +151,7 @@ namespace SGP4Funcs_mod_near
 		double xhdot1 = -temp1 * cos_incl;
 		// page 12
 		// (capital) omega_DF
-		sat.nodedot = xhdot1 + (0.5 * temp2 * (4.0 - 19.0 * cos2_incl) +
+		sat.node_dot = xhdot1 + (0.5 * temp2 * (4.0 - 19.0 * cos2_incl) +
 			2.0 * temp3 * (3.0 - 7.0 * cos2_incl)) * cos_incl;
 
 		// delta small omega (again without t - t_0)
@@ -249,166 +250,162 @@ namespace SGP4Funcs_mod_near
 		return sat;
 	}
 
+	static double solve_for_ecc_anom(double u, double a_xn, double a_yn) {
+		u = fmod(u, TWO_PI);
+		double eo = u;
+
+		double delta_eo = 1.0;
+
+		//   Vallando's comment:
+		//   the following iteration needs better limits on corrections
+
+		const int MAX_KEPLER_ITERATIONS = 10;
+		for (int i = 0; i < MAX_KEPLER_ITERATIONS; i++) {
+			double sin_eo = sin(eo);
+			double cos_eo = cos(eo);
+
+			delta_eo = (u - a_yn * cos_eo + a_xn * sin_eo - eo)
+				/ (1.0 - cos_eo * a_xn - sin_eo * a_yn);
+
+			if (delta_eo >= 0.95)
+				delta_eo = 0.95;
+			else if (delta_eo <= -0.95)
+				delta_eo = -0.95;
+
+			eo += delta_eo;
+
+			if (fabs(delta_eo) < 1.0e-12)
+				return eo;
+		}
+		return eo;
+	}
+
 	bool sgp4(elsetrec& sat, double tsince, double r[3], double v[3]) {
-		double am, axnl, aynl, betal, cnod,
-			cos2u, coseo1, cosi, cosisq, cossu, cosu,
-			delm, delomg, emsq, ecose, el2, eo1,
-			em, esine, pl, mrt = 0.0,
-			mvt, rdotl, rl, rvdot, rvdotl,
-			sin2u, sineo1, sini, sinsu, sinu,
-			snod, su, tem5, temp,
-			temp1, temp2, u, ux,
+		double cosisq,
+			tem5, temp,
+			temp1, temp2, ux,
 			uy, uz, vx, vy, vz,
-			nm, xinc, xl, xlm, 
-			xmx, xmy, xnode, tc, dndt, delmtemp;
+			xinc;
 
 		/* ------------------ set mathematical constants --------------- */
 		// sgp4fix divisor for divide by zero check on inclination
 		// the old check used 1.0 + cos(PI-1.0e-9), but then compared it to
 		// 1.5 e-12, so the threshold was changed to 1.5e-12 for consistency
-		// sgp4fix identify constants and allow alternate values
-		// getgravconst( whichconst, tumin, mu, radiusearthkm, xke, j2, j3, j4, j3oj2 );
-		const double vkmpersec = EARTH_J2 * X_KE / 60.0;
-
+		
 		/* ------- update for secular gravity and atmospheric drag ----- */
 		// M_DF
-		double mdf = sat.mo + sat.mdot * tsince;
+		double mean_anom_df = sat.mo + sat.mean_mot_dot * tsince;
 		// arg_DF
 		double argpdf = sat.argpo + sat.argpdot * tsince;
 		// right_ascencion_DF
-		double nodedf = sat.nodeo + sat.nodedot * tsince;
-		// 
+		double nodedf = sat.nodeo + sat.node_dot * tsince;
 		
-
-		// small omega (for perigee lower than 220)
-		double argpm = argpdf;
+		double t_pow2 = tsince * tsince;	
 		
-		// M  (for perigee lower than 220)
-		double mm = mdf;
-		
-		double t_pow2 = tsince * tsince;
 		// capital omega
 		double nodem = nodedf + sat.nodecf * t_pow2;
 		
+		// the whole if else block must be removed
+		// params that depend on perigee
+		// M_p, arg, ecc, sma, L (mm is both M_p and L?)
+		double mean_anom, argpm, am, ecc, l;
 		
-		
-		double tempa = 1.0 - sat.c1 * tsince;
-		double tempe = sat.bstar * sat.c4 * tsince;
-		double templ = sat.t2 * t_pow2;
-
 		double perigee = (sat.a * (1.0 - sat.ecc) - 1.0) * EARTH_RAD;
 		if (perigee > 220.0) {
-			delomg = sat.omgcof * tsince;
+			double del_arg = sat.omgcof * tsince;
 
-			delmtemp = 1.0 + sat.eta * cos(mdf);
-			delm = sat.xmcof *
-				(delmtemp * delmtemp * delmtemp -
-					sat.delmo);
-			temp = delomg + delm;
-			mm = mdf + temp;
-			argpm = argpdf - temp;
+			double temp_del_m = 1.0 + sat.eta * cos(mean_anom_df);
+			double del_m = sat.xmcof *
+				(temp_del_m * temp_del_m * temp_del_m - sat.delmo);
+
+			// M
+			mean_anom = mean_anom_df + del_arg + del_m;
+			argpm = argpdf - del_arg - del_m;
+			
 			double t_pow3 = t_pow2 * tsince;
 			double t_pow4 = t_pow3 * tsince;
 
-			tempa = tempa - sat.d2 * t_pow2 - sat.d3 * t_pow3 -
+			double temp_a = 1.0 - sat.c1 * tsince - sat.d2 * t_pow2 - sat.d3 * t_pow3 -
 				sat.d4 * t_pow4;
-			tempe = tempe + sat.bstar * sat.c5 * (sin(mm) -
-				sat.sinmao);
-			templ = templ + sat.t3 * t_pow3 + t_pow4 * (sat.t4 +
-				tsince * sat.t5);
-		}
+			am = sat.a * temp_a * temp_a;
 
-		nm = sat.no_unkozai;
-		em = sat.ecc;
+			double temp_e = sat.bstar * sat.c4 * tsince + sat.bstar * sat.c5
+				* (sin(mean_anom) - sat.sinmao);
+			ecc = sat.ecc - temp_e;
+
+			double temp_l = sat.t2 * t_pow2 + sat.t3 * t_pow3 + t_pow4 * (sat.t4 +
+				tsince * sat.t5);
+		
+			l = mean_anom + argpm + nodem + sat.no_unkozai * temp_l;
+		} else {
+
+			double temp_a = 1.0 - sat.c1 * tsince;
+			am = sat.a * temp_a * temp_a;
+		
+			ecc = sat.ecc - sat.bstar * sat.c4 * tsince;
+			
+			mean_anom = mean_anom_df;
+			argpm = argpdf;
+
+			l = mean_anom + argpm + nodem + sat.no_unkozai * sat.t2 * t_pow2;
+		}
+		double nm = X_KE / pow(am, 1.5);
 
 		// move it somewhere
-		if (nm <= 0.0) {
+		if (sat.no_unkozai <= 0.0) {
 			sat.error = 2;
 			return false;
 		}
 
-		// a
-		am = sat.a * tempa * tempa;
-		
-		// n
-		nm = X_KE / pow(am, 1.5);
-
-		// e
-		em = em - tempe;
-
 		// fix tolerance for error recognition
 		// sgp4fix am is fixed from the previous nm check
-		if (em >= 1.0 || em < -0.001/* || (am < 0.95)*/) {
+		if (ecc >= 1.0 || ecc < -0.001/* || (am < 0.95)*/) {
 			sat.error = 1;
 			return false;
 		}
 
 		// sgp4fix fix tolerance to avoid a divide by zero
-		if (em < 1.0e-6)
-			em = 1.0e-6;
-
-		mm = mm + sat.no_unkozai * templ;
-		xlm = mm + argpm + nodem;
-		emsq = em * em;
-		temp = 1.0 - emsq;
-
-		nodem = fmod(nodem, TWO_PI);
-		argpm = fmod(argpm, TWO_PI);
-		xlm = fmod(xlm, TWO_PI);
-		mm = fmod(xlm - argpm - nodem, TWO_PI);
+		if (ecc < 1.0e-6)
+			ecc = 1.0e-6;
 
 		double sin_incl = sin(sat.incl);
 		double cos_incl = cos(sat.incl);
 
 		/* -------------------- long period periodics ------------------ */
-		axnl = em * cos(argpm);
-		temp = 1.0 / (am * (1.0 - em * em));
-		aynl = em * sin(argpm) + temp * -0.5 * EARTH_J3_TO_J2 * sin_incl;
-		xl = mm + argpm + nodem + temp * sat.pre_L_coeff * axnl;
+		double a_xn = ecc * cos(argpm);
 
-		/* --------------------- solve kepler's equation --------------- */
-		u = fmod(xl - nodem, TWO_PI);
-		eo1 = u;
-		tem5 = 9999.9;
-		//   sgp4fix for kepler iteration
-		//   the following iteration needs better limits on corrections
-		
-		// TODO: move somewhere else
-		const int MAX_KEPLER_ITERATIONS = 10; 
-		for (int i = 0; i < 10 && fabs(tem5) >= 1.0e-12; i++) {
-			sineo1 = sin(eo1);
-			coseo1 = cos(eo1);
-			
-			tem5 = 1.0 - coseo1 * axnl - sineo1 * aynl;
-			tem5 = (u - aynl * coseo1 + axnl * sineo1 - eo1) / tem5;
+		temp = 1.0 / (am * (1.0 - ecc * ecc));
+		double a_yn = ecc * sin(argpm) + temp * -0.5 * EARTH_J3_TO_J2 * sin_incl;
 
-			if (fabs(tem5) >= 0.95)
-				tem5 = tem5 > 0.0 ? 0.95 : -0.95;
-			
-			eo1 = eo1 + tem5;
-		}
+		double l_t = l + temp * sat.pre_L_coeff * a_xn;
+
+
+		double u = l_t - nodem;
+		double ecc_anom = solve_for_ecc_anom(u, a_xn, a_yn);
+
+		double sin_ecc_anom = sin(ecc_anom), cos_ecc_anom = cos(ecc_anom);
+
 
 		/* ------------- short period preliminary quantities ----------- */
-		ecose = axnl * coseo1 + aynl * sineo1;
-		esine = axnl * sineo1 - aynl * coseo1;
-		el2 = axnl * axnl + aynl * aynl;
-		pl = am * (1.0 - el2);
+		double ecc_cos_e = a_xn * cos_ecc_anom + a_yn * sin_ecc_anom;
+		double ecc_sin_e = a_xn * sin_ecc_anom - a_yn * cos_ecc_anom;
+		double pl = am * (1.0 - a_xn * a_xn + a_yn * a_yn);
 		
 		if (pl < 0.0) {
 			sat.error = 4;
 			return false;
 		}
 
-		rl = am * (1.0 - ecose);
-		rdotl = sqrt(am) * esine / rl;
-		rvdotl = sqrt(pl) / rl;
-		betal = sqrt(1.0 - el2);
-		temp = esine / (1.0 + betal);
-		sinu = am / rl * (sineo1 - aynl - axnl * temp);
-		cosu = am / rl * (coseo1 - axnl + aynl * temp);
-		su = atan2(sinu, cosu);
-		sin2u =  2 * cosu * sinu;
-		cos2u = 1.0 - 2.0 * sinu * sinu;
+		double rl = am * (1.0 - ecc_cos_e);
+		double rdotl = sqrt(am) * ecc_sin_e / rl;
+		double rvdotl = sqrt(pl) / rl;
+		double betal = sqrt(1.0 - a_xn * a_xn + a_yn * a_yn);
+		temp = ecc_sin_e / (1.0 + betal);
+		double sinu = am / rl * (sin_ecc_anom - a_yn - a_xn * temp);
+		double cosu = am / rl * (cos_ecc_anom - a_xn + a_yn * temp);
+		double su = atan2(sinu, cosu);
+		double sin2u =  2 * cosu * sinu;
+		double cos2u = 1.0 - 2.0 * sinu * sinu;
 		temp = 1.0 / pl;
 		temp1 = 0.5 * EARTH_J2 * temp;
 		temp2 = temp1 * temp;
@@ -416,32 +413,38 @@ namespace SGP4Funcs_mod_near
 		double cos2_incl = cos_incl * cos_incl;
 		double three_cos2_incl_min_1 = 3 * cos2_incl - 1.0;
 		
-		mrt = rl * (1.0 - 1.5 * temp2 * betal * three_cos2_incl_min_1) +
+		double mrt = rl * (1.0 - 1.5 * temp2 * betal * three_cos2_incl_min_1) +
 			0.5 * temp1 * (1.0 - cos2_incl) * cos2u;
 		su = su - 0.25 * temp2 * (7.0 * cos2_incl - 1.0) * sin2u;
-		xnode = nodem + 1.5 * temp2 * cos_incl * sin2u;
+		
+		double node_k = nodem + 1.5 * temp2 * cos_incl * sin2u;
+		
 		xinc = sat.incl + 1.5 * temp2 * cos_incl * sin_incl * cos2u;
-		mvt = rdotl - nm * temp1 * (1.0 - cos2_incl) * sin2u / X_KE;
-		rvdot = rvdotl + nm * temp1 * ((1.0 - cos2_incl) * cos2u +
+
+
+		double mvt = rdotl - nm * temp1 * (1.0 - cos2_incl) * sin2u / X_KE;
+		double rvdot = rvdotl + nm * temp1 * ((1.0 - cos2_incl) * cos2u +
 			1.5 * three_cos2_incl_min_1) / X_KE;
 
 		/* --------------------- orientation vectors ------------------- */
-		sinsu = sin(su);
-		cossu = cos(su);
-		snod = sin(xnode);
-		cnod = cos(xnode);
-		sini = sin(xinc);
-		cosi = cos(xinc);
-		xmx = -snod * cosi;
-		xmy = cnod * cosi;
-		ux = xmx * sinsu + cnod * cossu;
-		uy = xmy * sinsu + snod * cossu;
-		uz = sini * sinsu;
-		vx = xmx * cossu - cnod * sinsu;
-		vy = xmy * cossu - snod * sinsu;
-		vz = sini * cossu;
+		double sinsu = sin(su);
+		double cossu = cos(su);
+		
+		double sin_node_k = sin(node_k),  cos_node_k = cos(node_k);
+		double sin_i = sin(xinc),      cos_i = cos(xinc);
+		
+		double xmx = -sin_node_k * cos_i;
+		double xmy = cos_node_k * cos_i;
+		ux = xmx * sinsu + cos_node_k * cossu;
+		uy = xmy * sinsu + sin_node_k * cossu;
+		uz = sin_i * sinsu;
+		vx = xmx * cossu - cos_node_k * sinsu;
+		vy = xmy * cossu - sin_node_k * sinsu;
+		vz = sin_i * cossu;
 
 		/* --------- position and velocity (in km and km/sec) ---------- */
+		const double vkmpersec = EARTH_J2 * X_KE / 60.0;
+		
 		r[0] = (mrt * ux) * EARTH_RAD;
 		r[1] = (mrt * uy) * EARTH_RAD;
 		r[2] = (mrt * uz) * EARTH_RAD;
