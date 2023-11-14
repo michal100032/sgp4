@@ -20,8 +20,6 @@ static const double EARTH_RAD = 6378.137;
 // ???? angular speed in an orbit of radius = EARTH_RAD? [rad/min]
 static const double X_KE = 60.0 / sqrt(EARTH_RAD * EARTH_RAD * EARTH_RAD / EARTH_GRV);
 
-static const double TUMIN = 1.0 / X_KE;
-
 // earth zonal harmonic model
 static const double EARTH_J2 = 0.00108262998905;
 static const double EARTH_J3 = -0.00000253215306;
@@ -86,8 +84,7 @@ namespace SGP4Funcs_mod_near
 
 		sat.c_coef_common = q0_min_s_tsi_pow4 / pow(1.0 - eta_pow2, 3.5);
 
-		double sin_incl = sin(sat.incl_0);
-		double cos_incl = cos(sat.incl_0);
+		double sin_incl = sin(sat.incl_0), cos_incl = cos(sat.incl_0);
 		double three_cos2_incl_min_1 = 3 * cos_incl * cos_incl - 1.0;
 
 		sat.c2 = sat.c_coef_common * sat.no_unkozai * (sat.sma_0 * (1.0 + 1.5 * eta_pow2 + ecc_eta *
@@ -282,33 +279,10 @@ namespace SGP4Funcs_mod_near
 		return eo;
 	}
 
-	state_vecs sgp4(propagation_coeffs& sat, double time) {
-		double temp, temp1, temp2;
-
-		/* ------------------ set mathematical constants --------------- */
-		// sgp4fix divisor for divide by zero check on inclination
-		// the old check used 1.0 + cos(PI-1.0e-9), but then compared it to
-		// 1.5 e-12, so the threshold was changed to 1.5e-12 for consistency
-		
-		/* ------- update for secular gravity and atmospheric drag ----- */
-		// M_DF
-		double mean_anom_df = sat.mean_anom_0 + sat.mean_mot_dot * time;
-		// arg_DF
-		double arg_p_df = sat.arg_p_0 + sat.arg_p_dot * time;
-		// right_ascencion_DF
-		double node_df = sat.node_0 + sat.node_dot * time;
-		
-		double t_pow2 = time * time;	
-		
-		// capital omega
-		double node = node_df + sat.nodecf * t_pow2;
-		
-		// the whole if else block must be removed
-		// params that depend on perigee
-		// M_p, arg, ecc, sma, L (mm is both M_p and L?)
-		double mean_anom, arg_p, sma, ecc, l;
-		
-		double perigee = (sat.sma_0 * (1.0 - sat.ecc_0) - 1.0) * EARTH_RAD;
+	static std::tuple<double, double, double, double, double> get_perigee_dependent_terms
+		(propagation_coeffs& sat, double perigee, double time, double mean_anom_df, double arg_p_df, double node) {
+		double mean_anom, arg_p, ecc, sma, l;
+		double t_pow2 = time * time;
 		if (perigee > 220.0) {
 			double del_arg = sat.omgcof * time;
 
@@ -319,7 +293,7 @@ namespace SGP4Funcs_mod_near
 			// M
 			mean_anom = mean_anom_df + del_arg + del_m;
 			arg_p = arg_p_df - del_arg - del_m;
-			
+
 			double t_pow3 = t_pow2 * time;
 			double t_pow4 = t_pow3 * time;
 
@@ -333,130 +307,135 @@ namespace SGP4Funcs_mod_near
 
 			double temp_l = sat.t2 * t_pow2 + sat.t3 * t_pow3 + t_pow4 * (sat.t4 +
 				time * sat.t5);
-		
-			l = mean_anom + arg_p + node + sat.no_unkozai * temp_l;
-		} 
-		else 
-		{
 
+			l = mean_anom + arg_p + node + sat.no_unkozai * temp_l;
+		} else {
 			double temp_a = 1.0 - sat.c1 * time;
 			sma = sat.sma_0 * temp_a * temp_a;
-		
+
 			ecc = sat.ecc_0 - sat.bstar * sat.c4 * time;
-			
+
 			mean_anom = mean_anom_df;
 			arg_p = arg_p_df;
 
 			l = mean_anom + arg_p + node + sat.no_unkozai * sat.t2 * t_pow2;
 		}
-		double nm = X_KE / pow(sma, 1.5);
 
-		/*
+		return { mean_anom, arg_p, ecc, sma, l };
+	}
 
-		if (sat.no_unkozai <= 0.0) {
-		//	sat.error = 2;
-			return false;
-		}
-
-		if (ecc >= 1.0 || ecc < -0.001) {
-			sat.error = 1;
-			return false;
-		}
-		*/
-		
-
-		// sgp4fix fix tolerance to avoid a divide by zero
-		if (ecc < 1.0e-6)
-			ecc = 1.0e-6;
-
-		double sin_incl = sin(sat.incl_0);
-		double cos_incl = cos(sat.incl_0);
-
-		/* -------------------- long period periodics ------------------ */
+	// returns ecc_anom + arg_p, a_xn, a_yn
+	static std::tuple<double, double, double> do_long_term_periodics
+		(const propagation_coeffs& sat, double arg_p, double ecc, double sma, double l, double node) {
 		double a_xn = ecc * cos(arg_p);
 
-		temp = 1.0 / (sma * (1.0 - ecc * ecc));
-		double a_yn = ecc * sin(arg_p) + temp * -0.5 * EARTH_J3_TO_J2 * sin_incl;
+		double temp = 1.0 / (sma * (1.0 - ecc * ecc));
+		double a_yn = ecc * sin(arg_p) + temp * -0.5 * EARTH_J3_TO_J2 * sin(sat.incl_0);
 
 		double l_t = l + temp * sat.pre_L_coeff * a_xn;
 
-		double ecc_anom = solve_keplers_equation(l_t - node, a_xn, a_yn);
+		double e = solve_keplers_equation(l_t - node, a_xn, a_yn);
 
-		double sin_ecc_anom = sin(ecc_anom), cos_ecc_anom = cos(ecc_anom);
+		return { e, a_xn, a_yn };
+	}
 
+	state_vecs sgp4(propagation_coeffs& sat, double time) {
+		double mean_anom_df = sat.mean_anom_0 + sat.mean_mot_dot * time;
+		double arg_p_df = sat.arg_p_0 + sat.arg_p_dot * time;
+		double node_df = sat.node_0 + sat.node_dot * time;
+		
+		double t_pow2 = time * time;
+		double perigee = (sat.sma_0 * (1.0 - sat.ecc_0) - 1.0) * EARTH_RAD;
+
+		double node = node_df + sat.nodecf * t_pow2;
+		auto [mean_anom, arg_p, ecc, sma, l]
+			= get_perigee_dependent_terms(sat, perigee, time, mean_anom_df, arg_p_df, node);
+
+		double mean_mot = X_KE / pow(sma, 1.5);
+
+		if (sat.no_unkozai <= 0.0)
+			throw std::logic_error("sgp4 error 2 (negative mean motion)");
+
+		if (ecc >= 1.0 || ecc < -0.001)
+			throw std::logic_error("sgp4 error 1 (bad eccentricity)");
+
+		// fix tolerance to avoid a divide by zero
+		if (ecc < 1.0e-6)
+			ecc = 1.0e-6;
+		
+		/* -------------------- long period periodics ------------------ */
+		auto [ecc_anom_arg, a_xn, a_yn] = do_long_term_periodics(sat, arg_p, ecc, sma, l, node);
+		double sin_ecc_anom = sin(ecc_anom_arg), cos_ecc_anom = cos(ecc_anom_arg);
 
 		/* ------------- short period preliminary quantities ----------- */
 		double ecc_cos_e = a_xn * cos_ecc_anom + a_yn * sin_ecc_anom;
 		double ecc_sin_e = a_xn * sin_ecc_anom - a_yn * cos_ecc_anom;
-		double pl = sma * (1.0 - a_xn * a_xn + a_yn * a_yn);
-		
-		/*
-		if (pl < 0.0) {
-			sat.error = 4;
-			return false;
-		}*/
+		// semi latus rectum?
+		double p_l = sma * (1.0 - a_xn * a_xn + a_yn * a_yn);
 
-		double rl = sma * (1.0 - ecc_cos_e);
-		double rdotl = sqrt(sma) * ecc_sin_e / rl;
-		double rvdotl = sqrt(pl) / rl;
-		double betal = sqrt(1.0 - a_xn * a_xn + a_yn * a_yn);
-		temp = ecc_sin_e / (1.0 + betal);
-		double sin_u = sma / rl * (sin_ecc_anom - a_yn - a_xn * temp);
-		double cos_u = sma / rl * (cos_ecc_anom - a_xn + a_yn * temp);
+		if (p_l < 1.0)
+			throw std::logic_error("sgp4 error 4 (bad p_l)");
+
+		// 
+		double r = sma * (1.0 - ecc_cos_e);
+		double r_dot = sqrt(sma) * ecc_sin_e / r;
+		double r_f_dot = sqrt(p_l) / r;
+
+		double beta_l = sqrt(1.0 - a_xn * a_xn + a_yn * a_yn);
+		;
+		double sin_u = sma / r * (sin_ecc_anom - a_yn - a_xn * ecc_sin_e / (1.0 + beta_l));
+		double cos_u = sma / r * (cos_ecc_anom - a_xn + a_yn * ecc_sin_e / (1.0 + beta_l));
+		
 		double sin_2u =  2 * cos_u * sin_u;
 		double cos_2u = 1.0 - 2.0 * sin_u * sin_u;
-		temp = 1.0 / pl;
-		temp1 = 0.5 * EARTH_J2 * temp;
-		temp2 = temp1 * temp;
 
+		double half_j2_over_pl_pow2 = 0.5 * EARTH_J2 / p_l / p_l;
+
+		double sin_incl = sin(sat.incl_0), cos_incl = cos(sat.incl_0);
 		double cos2_incl = cos_incl * cos_incl;
 		double three_cos2_incl_min_1 = 3 * cos2_incl - 1.0;
 		
-		double mrt = rl * (1.0 - 1.5 * temp2 * betal * three_cos2_incl_min_1) +
-			0.5 * temp1 * (1.0 - cos2_incl) * cos_2u;
-		double u_k = atan2(sin_u, cos_u) - 0.25 * temp2 * (7.0 * cos2_incl - 1.0) * sin_2u;
-		
-		double node_k = node + 1.5 * temp2 * cos_incl * sin_2u;
-		
-		double incl_k = sat.incl_0 + 1.5 * temp2 * cos_incl * sin_incl * cos_2u;
+		double r_k = r * (1.0 - 1.5 * half_j2_over_pl_pow2 * beta_l * three_cos2_incl_min_1) +
+			0.25 * EARTH_J2 / p_l * (1.0 - cos2_incl) * cos_2u;
+
+		double u_k = atan2(sin_u, cos_u) - 0.25 * half_j2_over_pl_pow2 * (7.0 * cos2_incl - 1.0) * sin_2u;
+		double node_k = node + 1.5 * half_j2_over_pl_pow2 * cos_incl * sin_2u;
+		double incl_k = sat.incl_0 + 1.5 * half_j2_over_pl_pow2 * cos_incl * sin_incl * cos_2u;
 
 
-		double mvt = rdotl - nm * temp1 * (1.0 - cos2_incl) * sin_2u / X_KE;
-		double rvdot = rvdotl + nm * temp1 * ((1.0 - cos2_incl) * cos_2u +
+		// fuck
+		double r_k_dot = r_dot - mean_mot * 0.5 * EARTH_J2 / p_l * (1.0 - cos2_incl) * sin_2u / X_KE;
+		double r_f_k_dot = r_f_dot + mean_mot * 0.5 * EARTH_J2 / p_l * ((1.0 - cos2_incl) * cos_2u +
 			1.5 * three_cos2_incl_min_1) / X_KE;
 
 		/* --------------------- orientation vectors ------------------- */
 		
-		double sin_u_k = sin(u_k);
-		double cos_u_k = cos(u_k);
-		
+		double sin_u_k = sin(u_k), cos_u_k = cos(u_k);
 		double sin_node_k = sin(node_k),  cos_node_k = cos(node_k);
 		double sin_i_k = sin(incl_k), cos_incl_k = cos(incl_k);
 		
-		double xmx = -sin_node_k * cos_incl_k;
-		double xmy = cos_node_k * cos_incl_k;
+		double m_x = -sin_node_k * cos_incl_k;
+		double m_y = cos_node_k * cos_incl_k;
 
 		sgp4::vec3 u = {
-			xmx * sin_u_k + cos_node_k * cos_u_k,
-			xmy * sin_u_k + sin_node_k * cos_u_k,
+			m_x * sin_u_k + cos_node_k * cos_u_k,
+			m_y * sin_u_k + sin_node_k * cos_u_k,
 			sin_i_k * sin_u_k
 		};
 		sgp4::vec3 v = {
-			xmx * cos_u_k - cos_node_k * sin_u_k,
-			xmy * cos_u_k - sin_node_k * sin_u_k,
+			m_x * cos_u_k - cos_node_k * sin_u_k,
+			m_y * cos_u_k - sin_node_k * sin_u_k,
 			sin_i_k * cos_u_k
 		};
 		/* --------- position and velocity (in km and km/sec) ---------- */
-		/*
-		// orbit decayed?
-		if (mrt < 1.0) {
-			sat.error = 6;
-			return false;
-		}*/
-		const double vkmpersec = EARTH_J2 * X_KE / 60.0;
+		if (r_k < 1.0)
+			throw std::logic_error("sgp4 error 6 (orbit decayed)");
+
+		// why X_KE??
+		const double vkmpersec = EARTH_RAD * X_KE / 60.0;
 		state_vecs vecs;
-		vecs.position = u * mrt * EARTH_RAD; 
-		vecs.velocity = (u * mvt + v * rvdot) * vkmpersec;
+		vecs.position = u * r_k * EARTH_RAD;
+		vecs.velocity = (u * r_k_dot + v * r_f_k_dot) * vkmpersec;
 		
 		return vecs;
 	}

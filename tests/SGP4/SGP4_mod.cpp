@@ -546,7 +546,7 @@ namespace SGP4Funcs_mod
 		const double temp4 = 1.5e-12;
 		// sgp4fix identify constants and allow alternate values
 		// getgravconst( whichconst, tumin, mu, radiusearthkm, xke, j2, j3, j4, j3oj2 );
-		vkmpersec = EARTH_J2 * X_KE / 60.0;
+		vkmpersec = EARTH_RAD * X_KE / 60.0;
 
 		satrec.t = tsince;
 

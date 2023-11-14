@@ -135,6 +135,24 @@ int main() {
 			std::cout << (coords.latitude * RAD_TO_DEG) << " "
 				<< (coords.longitude * RAD_TO_DEG) << std::endl;
 		}
+		const char* assert_msg_2 =
+			"SGP4s yield different velocities";
+
+
+		if (!assert_d3v3(vel_sgp4_mod, vel_mod_near, assert_msg_2)) {
+			std::cout << "SGP4_near: " << std::endl;
+
+			std::cout << vel_sgp4_mod[0] << " " << vel_sgp4_mod[1] << " " << vel_sgp4_mod[2] << std::endl;
+			std::cout << vel_mod_near.x << " " << vel_mod_near.y << " " << vel_mod_near.z << std::endl;
+		}
+
+		if (!assert_d3(vel_sgp4_mod, vel_sgp4, assert_msg_2)) {
+			std::cout << "SPG_mod: " << std::endl;
+
+			std::cout << vel_sgp4_mod[0] << " " << vel_sgp4_mod[1] << " " << vel_sgp4_mod[2] << std::endl;
+			std::cout << vel_sgp4[0] << " " << vel_sgp4[1] << " " << vel_sgp4[2] << std::endl;
+		}
+
 	
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 		std::cout << std::endl << std::endl;
