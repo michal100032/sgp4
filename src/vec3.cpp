@@ -25,7 +25,7 @@ sgp4::vec3 sgp4::vec3::operator-(const vec3& other) {
 	return { x - other.x, y - other.y, z - other.z };;
 }
 
-sgp4::vec3 sgp4::vec3::operator*(float scalar) {
+sgp4::vec3 sgp4::vec3::operator*(double scalar) {
 	return { x * scalar, y * scalar, z * scalar };;
 }
 

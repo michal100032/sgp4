@@ -11,7 +11,7 @@ namespace sgp4 {
 		vec3 normalized();
 		vec3 operator+(const vec3& other);
 		vec3 operator-(const vec3& other);
-		vec3 operator*(float scalar);
+		vec3 operator*(double scalar);
 		vec3 operator-();
 
 		bool operator==(const vec3& other);

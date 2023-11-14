@@ -59,6 +59,21 @@ bool assert_d3(double d1[3], double d2[3], const char* msg) {
 	return true;
 }
 
+bool assert_d3v3(double d[3], sgp4::vec3 vec, const char* msg) {
+	static const double epsilon = 1e-4;
+
+	bool a0 = abs(d[0] - vec.x) < epsilon;
+	bool a1 = abs(d[1] - vec.y) < epsilon;
+	bool a2 = abs(d[2] - vec.z) < epsilon;
+
+	if (!a0 || !a1 || !a2) {
+		std::cerr << " --------- ASSERTION FAILED! --------- " << std::endl;
+		std::cerr << msg << std::endl;
+		return false;
+	}
+	return true;
+}
+
 
 int main() {
 	char tle_line_one[130], tle_line_two[130];
@@ -75,11 +90,11 @@ int main() {
 	SGP4Funcs_mod::elsetrec sgp4_mod_rec = 
 		SGP4Funcs_mod::twoline2rv(entry);
 
-	SGP4Funcs_mod_near::elsetrec sgp4_near_rec = SGP4Funcs_mod_near::sgp4init(entry);
+	SGP4Funcs_mod_near::propagation_coeffs sgp4_near_rec = SGP4Funcs_mod_near::sgp4init(entry);
 
 	while (true) {
-		double pos_sgp4[3], pos_sgp4_mod[3], pos_sgp4_mod_near[3];
-		double vel_sgp4[3], vel_sgp4_mod[3], vel_sgp4_mod_near[3];
+		double pos_sgp4[3], pos_sgp4_mod[3];
+		double vel_sgp4[3], vel_sgp4_mod[3];
 
 		auto now = std::chrono::utc_clock::now();
 
@@ -105,14 +120,20 @@ int main() {
 			print_coords_from_pos(pos_sgp4_mod, now);
 		}
 
-		SGP4Funcs_mod_near::sgp4(sgp4_near_rec, seconds_offset / 60.0, pos_sgp4_mod_near, vel_sgp4_mod_near);
+		auto [pos_mod_near, vel_mod_near] = 
+			SGP4Funcs_mod_near::sgp4(sgp4_near_rec, seconds_offset / 60.0);
+		/*
 		if (sgp4_near_rec.error != 0) {
 			std::cerr << "SGP4_mod_near error " << sgp4_near_rec.error << std::endl;
-		}
+		}*/
 
-		if (!assert_d3(pos_sgp4, pos_sgp4_mod_near, assert_msg)) {
+		if (!assert_d3v3(pos_sgp4, pos_mod_near, assert_msg)) {
 			std::cout << "SGP4_near: " << std::endl;
-			print_coords_from_pos(pos_sgp4_mod_near, now);
+			sgp4::earth_coords coords = sgp4::from_eci_to_coords_ellipsoid(pos_mod_near, now);
+
+			std::cout << "Latitude longitude: " << std::endl;
+			std::cout << (coords.latitude * RAD_TO_DEG) << " "
+				<< (coords.longitude * RAD_TO_DEG) << std::endl;
 		}
 	
 		std::this_thread::sleep_for(std::chrono::seconds(1));
