@@ -54,11 +54,7 @@ static double get_s_constant(double perigee) {
 }
 
 void sgp4::propagator::load(const tle_set& set) {
-	/* Store time differently
-	double julian_epoch = sgp4::time_utils::to_julian(set.epoch);
-	jdsatepoch = julian_epoch;
-	jdsatepochF = get_julian_since_midnight(julian_epoch);
-	*/
+	epoch = set.epoch;
 
 	no_kozai = set.mean_motion;
 	ndot = set.d_mean_motion;
@@ -346,22 +342,24 @@ std::tuple<double, double, double> sgp4::propagator::do_long_term_periodics
 	return { e, a_xn, a_yn };
 }
 
-static double get_time_from_epoch_mins(std::chrono::utc_clock::time_point time) {
-	return 0.0;
+double sgp4::propagator::get_epoch_offset_minutes(std::chrono::utc_clock::time_point time) {
+	return std::chrono::duration<double>(time - epoch).count() / 60.0;
 }
 
-sgp4::state_vecs sgp4::propagator::run(double time) {
-	
-	double mean_anom_df = mean_anom_0 + mean_mot_dot * time;
-	double arg_p_df = arg_p_0 + arg_p_dot * time;
-	double node_df = node_0 + node_dot * time;
+sgp4::state_vecs sgp4::propagator::run(std::chrono::utc_clock::time_point time) {
 
-	double t_pow2 = time * time;
+	double t_mins = get_epoch_offset_minutes(time);
+	
+	double mean_anom_df = mean_anom_0 + mean_mot_dot * t_mins;
+	double arg_p_df = arg_p_0 + arg_p_dot * t_mins;
+	double node_df = node_0 + node_dot * t_mins;
+
+	double t_pow2 = t_mins * t_mins;
 	double perigee = (sma_0 * (1.0 - ecc_0) - 1.0) * EARTH_RAD;
 
 	double node = node_df + nodecf * t_pow2;
 	auto [mean_anom, arg_p, ecc, sma, l]
-		= get_perigee_dependent_terms(perigee, time, mean_anom_df, arg_p_df, node);
+		= get_perigee_dependent_terms(perigee, t_mins, mean_anom_df, arg_p_df, node);
 
 	double mean_mot = EARTH_KE / pow(sma, 1.5);
 

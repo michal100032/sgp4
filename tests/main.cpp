@@ -1,13 +1,9 @@
 #include <iostream>
 #include <cstring>
 #include <vector>
-
-#include <cassert>
 #include <thread>
 
 #include "SGP4/SGP4.h"
-#include "SGP4/SGP4_mod.h"
-#include "SGP4/SGP4_mod_near.h"
 
 #include "sgp4/sgp4.hpp"
 
@@ -74,42 +70,46 @@ bool assert_d3v3(double d[3], sgp4::vec3 vec, const char* msg) {
 	return true;
 }
 
-
-int main() {
+SGP4Funcs::elsetrec init_sgp4() {
 	char tle_line_one[130], tle_line_two[130];
 	split_tle(TLE, tle_line_one, tle_line_two);
 
-
-	auto entry = sgp4::parse_tle_entry(TLE);
+	double startmfe, stopmfe, deltamin;
 
 	SGP4Funcs::elsetrec sgp4_rec;
-	double startmfe, stopmfe, deltamin;
 	SGP4Funcs::twoline2rv(tle_line_one, tle_line_two,
 		'c', 0, 'i', SGP4Funcs::wgs84, startmfe, stopmfe, deltamin, sgp4_rec);
+
+	return sgp4_rec;
+}
+
+int main() {
+	auto entry = sgp4::parse_tle_entry(TLE);
 	
-	sgp4::propagator iss_propagator(TLE);
+	std::cout << entry.epoch << std::endl;
+	
+	sgp4::propagator iss_propagator(entry);
+
+	SGP4Funcs::elsetrec sgp4_rec = init_sgp4();
 
 	while (true) {
+
 		auto now = std::chrono::utc_clock::now();
-
-		double seconds_offset
-			= std::chrono::duration<double>(now - entry.epoch).count();
-
-		auto [pos, vel] = iss_propagator.run(seconds_offset / 60.0);
+		auto [pos, vel] = iss_propagator.run(now);
 
 		sgp4::earth_coords coords =
 			sgp4::from_eci_to_coords_ellipsoid(pos, now);
 
-		std::cout << "Latitude longitude: " << std::endl;
-		std::cout << (coords.latitude * RAD_TO_DEG) << " "
-			<< (coords.longitude * RAD_TO_DEG) << std::endl;
+		std::cout << coords << std::endl;
 
-		
+
+		double minutes_offset
+			= std::chrono::duration<double>(now - entry.epoch).count() / 60.0;
 
 		double pos_sgp4[3];
 		double vel_sgp4[3];
 
-		SGP4Funcs::sgp4(sgp4_rec, seconds_offset / 60.0, pos_sgp4, vel_sgp4);
+		SGP4Funcs::sgp4(sgp4_rec, minutes_offset, pos_sgp4, vel_sgp4);
 		if (sgp4_rec.error != 0) {
 			std::cerr << "SGP4 error " << sgp4_rec.error << std::endl;
 		}

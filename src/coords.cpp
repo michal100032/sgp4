@@ -4,6 +4,10 @@
 #include <cmath>
 
 static const double PI = 3.14159265359;
+static const double RAD_TO_DEG = 180.0 / PI;
+
+// WGS 84
+
 static const double EARTH_FLAT = 1.0 / 298.257223563;
 static const double EARTH_SEMI_MAJOR = 6378.137; // km
 
@@ -40,4 +44,10 @@ sgp4::earth_coords sgp4::from_eci_to_coords_ellipsoid(const vec3& pos, std::chro
 	coords.latitude = new_lat;
 
 	return coords;
+}
+
+std::ostream& sgp4::operator<<(std::ostream& os, const sgp4::earth_coords& coords) {
+	os << "Latitude: " << (coords.latitude * RAD_TO_DEG) << std::endl 
+		<< "Longitude: " << (coords.longitude * RAD_TO_DEG);
+	return os;
 }

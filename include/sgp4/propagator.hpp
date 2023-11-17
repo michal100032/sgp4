@@ -21,8 +21,7 @@ namespace sgp4 {
 
 		void load(const tle_set& set);
 	
-		// change to utc_clock time
-		state_vecs run(double time);
+		state_vecs run(std::chrono::utc_clock::time_point time);
 
 	private: 
 		
@@ -43,6 +42,7 @@ namespace sgp4 {
 
 		// store time differently
 		double jdsatepoch = 0.0, jdsatepochF = 0.0;
+		std::chrono::utc_clock::time_point epoch;
 
 		double sma_0 = 0.0, nddot = 0.0, ndot = 0.0,
 			bstar = 0.0, incl_0 = 0.0, node_0 = 0.0, ecc_0 = 0.0,
@@ -54,6 +54,8 @@ namespace sgp4 {
 		double no_unkozai = 0.0, no_kozai = 0.0;
 
 		// private methods
+		double get_epoch_offset_minutes(std::chrono::utc_clock::time_point time);
+
 		void calculate_pre_L_coeff();
 
 		void calculate_c_coeffs();
