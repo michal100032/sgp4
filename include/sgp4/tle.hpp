@@ -4,12 +4,13 @@
 #include <string>
 #include <string_view>
 #include <chrono>
+#include <optional>
 
 namespace sgp4 {
 
 	struct tle_set {
 		// Line 0
-		std::string name;
+		std::optional<std::string> name;
 
 		// Line 1
 		int catalog_number;
@@ -39,7 +40,7 @@ namespace sgp4 {
 
 		double rad_press_coef;
 
-		int ephemeris_type;
+		int tle_set_type;
 
 		int set_num;
 		// Line 2

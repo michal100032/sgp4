@@ -13,12 +13,12 @@ static const double EARTH_GRV = 398600.5;
 static const double EARTH_RAD = 6378.137;
 
 // ??????
-static const double X_KE = 60.0 / sqrt(EARTH_RAD * EARTH_RAD * EARTH_RAD / EARTH_GRV);
+static const double EARTH_KE = 60.0 / sqrt(EARTH_RAD * EARTH_RAD * EARTH_RAD / EARTH_GRV);
 
 // ???? angular speed in an orbit of radius = EARTH_RAD? [rad/min]
 
 // earth zonal harmonic model
-static const double TUMIN = 1.0 / X_KE;
+static const double TUMIN = 1.0 / EARTH_KE;
 static const double EARTH_J2 = 0.00108262998905;
 static const double EARTH_J3 = -0.00000253215306;
 static const double EARTH_J4 = -0.00000161098761;

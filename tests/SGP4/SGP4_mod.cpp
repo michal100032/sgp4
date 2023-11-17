@@ -16,12 +16,12 @@ static const double EARTH_GRV = 398600.5;
 static const double EARTH_RAD = 6378.137;
 
 // ??????
-static const double X_KE = 60.0 / sqrt(EARTH_RAD * EARTH_RAD * EARTH_RAD / EARTH_GRV);
+static const double EARTH_KE = 60.0 / sqrt(EARTH_RAD * EARTH_RAD * EARTH_RAD / EARTH_GRV);
 
 // ???? angular speed in an orbit of radius = EARTH_RAD? [rad/min]
 
 // earth zonal harmonic model
-static const double TUMIN = 1.0 / X_KE;
+static const double TUMIN = 1.0 / EARTH_KE;
 static const double EARTH_J2 = 0.00108262998905;
 static const double EARTH_J3 = -0.00000253215306;
 static const double EARTH_J4 = -0.00000161098761;
@@ -114,7 +114,7 @@ namespace SGP4Funcs_mod
 
 		/* ------------------ un-kozai the mean motion ----------------- */
 
-		ak = pow(X_KE / no_kozai, 2.0 / 3.0);
+		ak = pow(EARTH_KE / no_kozai, 2.0 / 3.0);
 		d1 = 0.75 * EARTH_J2 * (3.0 * cosio2 - 1.0) / (rteosq * omeosq);
 		del = d1 / (ak * ak);
 		adel = ak * (1.0 - del * del - del *
@@ -122,7 +122,7 @@ namespace SGP4Funcs_mod
 		del = d1 / (adel * adel);
 		no_unkozai = no_kozai / (1.0 + del);
 		
-		sma = pow(X_KE / (no_unkozai), 2.0 / 3.0);
+		sma = pow(EARTH_KE / (no_unkozai), 2.0 / 3.0);
 		sinio = sin(inclo);
 		po = sma * omeosq;
 		con42 = 1.0 - 5.0 * cosio2;
@@ -394,7 +394,7 @@ namespace SGP4Funcs_mod
 
 				dsinit
 				(
-					X_KE,
+					EARTH_KE,
 					cosim, emsq, satrec.argpo, s1, s2, s3, s4, s5, sinim, ss1, ss2, ss3, ss4,
 					ss5, sz1, sz3, sz11, sz13, sz21, sz23, sz31, sz33, satrec.t, tc,
 					satrec.gsto, satrec.mo, satrec.mdot, satrec.no_unkozai, satrec.nodeo,
@@ -546,7 +546,7 @@ namespace SGP4Funcs_mod
 		const double temp4 = 1.5e-12;
 		// sgp4fix identify constants and allow alternate values
 		// getgravconst( whichconst, tumin, mu, radiusearthkm, xke, j2, j3, j4, j3oj2 );
-		vkmpersec = EARTH_RAD * X_KE / 60.0;
+		vkmpersec = EARTH_RAD * EARTH_KE / 60.0;
 
 		satrec.t = tsince;
 
@@ -611,8 +611,8 @@ namespace SGP4Funcs_mod
 			return false;
 		}
 
-		am = pow((X_KE / nm), 2.0 / 3.0) * tempa * tempa;
-		nm = X_KE / pow(am, 1.5);
+		am = pow((EARTH_KE / nm), 2.0 / 3.0) * tempa * tempa;
+		nm = EARTH_KE / pow(am, 1.5);
 		em = em - tempe;
 
 		// fix tolerance for error recognition
@@ -767,9 +767,9 @@ namespace SGP4Funcs_mod
 			su = su - 0.25 * temp2 * satrec.x7thm1 * sin2u;
 			xnode = nodep + 1.5 * temp2 * cosip * sin2u;
 			xinc = xincp + 1.5 * temp2 * cosip * sinip * cos2u;
-			mvt = rdotl - nm * temp1 * satrec.x1mth2 * sin2u / X_KE;
+			mvt = rdotl - nm * temp1 * satrec.x1mth2 * sin2u / EARTH_KE;
 			rvdot = rvdotl + nm * temp1 * (satrec.x1mth2 * cos2u +
-				1.5 * satrec.con41) / X_KE;
+				1.5 * satrec.con41) / EARTH_KE;
 
 			/* --------------------- orientation vectors ------------------- */
 			sinsu = sin(su);

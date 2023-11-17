@@ -92,6 +92,8 @@ int main() {
 
 	SGP4Funcs_mod_near::propagation_coeffs sgp4_near_rec = SGP4Funcs_mod_near::sgp4init(entry);
 
+	sgp4::propagator iss_propagator(TLE);
+
 	while (true) {
 		double pos_sgp4[3], pos_sgp4_mod[3];
 		double vel_sgp4[3], vel_sgp4_mod[3];
@@ -135,6 +137,7 @@ int main() {
 			std::cout << (coords.latitude * RAD_TO_DEG) << " "
 				<< (coords.longitude * RAD_TO_DEG) << std::endl;
 		}
+
 		const char* assert_msg_2 =
 			"SGP4s yield different velocities";
 
@@ -152,8 +155,11 @@ int main() {
 			std::cout << vel_sgp4_mod[0] << " " << vel_sgp4_mod[1] << " " << vel_sgp4_mod[2] << std::endl;
 			std::cout << vel_sgp4[0] << " " << vel_sgp4[1] << " " << vel_sgp4[2] << std::endl;
 		}
+		auto [pos, vel] = iss_propagator.run(seconds_offset / 60.0);
+		if (vel.x == vel_mod_near.x && vel.y == vel_mod_near.y && vel.z == vel_mod_near.z) {
+			std::cout << "OK" << std::endl;
+		}
 
-	
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 		std::cout << std::endl << std::endl;
 	}

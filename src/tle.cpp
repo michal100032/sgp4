@@ -79,7 +79,7 @@ static void parse_line1(std::string_view line, sgp4::tle_set& out_entry) {
 	out_entry.dd_mean_motion = parse_double_pow(line, 44, 52) * 2 * PI / 1440.0 / 1440.0 / 1440.0;
 	out_entry.rad_press_coef = parse_double_pow(line, 53, 61);
 
-	out_entry.ephemeris_type = line[62] - '0';
+	out_entry.tle_set_type = line[62] - '0';
 	out_entry.set_num = parse_num<int>(line, 64, 68);
 }
 
